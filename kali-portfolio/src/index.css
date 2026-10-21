@@ -44,49 +44,19 @@ button {
   border-radius: 8px;
 }
 
-/* boot splash */
-.boot-bg {
-  opacity: 0.32;
-  filter: blur(2px) saturate(1.2);
-  transform: scale(1.08);
-  animation: boot-drift 18s ease-in-out infinite alternate;
+/* boot console */
+.boot-fade-out {
+  animation: boot-fade-out 0.4s ease-in forwards;
 }
 
-.boot-scan::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(34, 211, 238, 0.07),
-    transparent
-  );
-  animation: boot-scan 7s linear infinite;
-  pointer-events: none;
-}
-
-.boot-logo {
-  animation:
-    boot-logo-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both,
-    boot-float 6s ease-in-out 1.2s infinite;
-}
-
-.neon-ring {
-  border: 1px solid rgba(34, 211, 238, 0.35);
-  animation: neon-pulse 3.2s ease-in-out infinite;
-}
-
-.boot-exit {
-  animation: boot-exit 0.6s ease-in forwards;
-}
-
-.boot-root {
-  animation: boot-fade-in 0.5s ease-out both;
-}
-
-.blink {
-  animation: blink 1.1s steps(1) infinite;
+.boot-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 0.15em;
+  transform: translateY(0.15em);
+  background: currentColor;
+  animation: boot-blink 1.05s steps(1) infinite;
 }
 
 /* desktop */
@@ -98,74 +68,13 @@ button {
   animation: menu-in 0.18s ease-out both;
 }
 
-@keyframes boot-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes boot-drift {
-  from {
-    transform: scale(1.08) translate3d(0, 0, 0);
-  }
-  to {
-    transform: scale(1.16) translate3d(-1.5%, -1%, 0);
-  }
-}
-
-@keyframes boot-scan {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
-}
-
-@keyframes boot-logo-in {
-  from {
-    opacity: 0;
-    transform: translateY(22px) scale(0.94);
-    filter: blur(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-@keyframes boot-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-9px);
-  }
-}
-
-@keyframes neon-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 14px rgba(34, 211, 238, 0.22), 0 0 46px rgba(34, 211, 238, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 26px rgba(34, 211, 238, 0.45), 0 0 80px rgba(34, 211, 238, 0.2);
-  }
-}
-
-@keyframes boot-exit {
+@keyframes boot-fade-out {
   to {
     opacity: 0;
-    transform: scale(1.05);
   }
 }
 
-@keyframes blink {
+@keyframes boot-blink {
   0%,
   49% {
     opacity: 1;
@@ -199,11 +108,8 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot-bg,
-  .boot-scan::after,
-  .boot-logo,
-  .neon-ring,
-  .blink,
+  .boot-fade-out,
+  .boot-cursor,
   .desktop-in,
   .desktop-menu {
     animation: none !important;
