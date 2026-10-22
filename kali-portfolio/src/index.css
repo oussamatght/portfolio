@@ -49,6 +49,61 @@ button {
   animation: boot-fade-out 0.4s ease-in forwards;
 }
 
+.stage-in {
+  animation: stage-in 0.25s ease-out both;
+}
+
+/* logo splash (boot sequence, not part of the GRUB menu) */
+.splash-logo {
+  animation: splash-logo 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.7s both;
+}
+
+.splash-glow {
+  animation: splash-glow 2s ease-out 0.9s both;
+}
+
+.splash-fill {
+  animation: splash-fill 1.9s cubic-bezier(0.4, 0, 0.2, 1) 0.8s both;
+}
+
+@keyframes stage-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes splash-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-glow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+
+@keyframes splash-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 .boot-cursor {
   display: inline-block;
   width: 0.55em;
@@ -111,7 +166,176 @@ button {
   .boot-fade-out,
   .boot-cursor,
   .desktop-in,
-  .desktop-menu {
+  .desktop-menu,
+  .stage-in,
+  .splash-logo,
+  .splash-glow,
+  .splash-fill {
     animation: none !important;
   }
+
+  .splash-fill {
+    width: 100%;
+  }
+}
+/* ===== LogoSplash (Plymouth-style) — paste at the end of src/index.css ===== */
+
+.lsplash-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #02040a;
+  color: #cbd5e1;
+  animation: lsplash-enter 500ms ease-out both;
+}
+@keyframes lsplash-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lsplash-exit {
+  animation: lsplash-leave var(--exit-ms, 650ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes lsplash-leave {
+  to { opacity: 0; transform: scale(1.03); filter: blur(4px); }
+}
+
+/* ---------- background ---------- */
+.lsplash-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(20, 50, 110, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  pointer-events: none;
+}
+.lsplash-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- kernel text ---------- */
+.lsplash-kernel {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #475569;
+}
+@media (min-width: 640px) {
+  .lsplash-kernel { top: 20px; left: 24px; font-size: 11px; }
+}
+.lsplash-kline {
+  margin: 0;
+  animation: lsplash-kline 300ms ease-out both;
+}
+@keyframes lsplash-kline {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- center stack ---------- */
+.lsplash-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.4rem;
+}
+
+.lsplash-logo-box {
+  position: relative;
+  width: min(72vw, 460px);
+}
+
+/* reveal: fade + slight scale + blur-to-sharp, then idle breathing */
+.lsplash-logo {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  will-change: transform, opacity, filter;
+  animation:
+    lsplash-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    lsplash-breathe 3.6s ease-in-out 900ms infinite;
+}
+.lsplash-blend { mix-blend-mode: screen; }
+
+
+
+
+/* ---------- progress ---------- */
+.lsplash-progress {
+  width: min(64vw, 300px);
+  animation: lsplash-up 700ms 500ms ease-out both;
+}
+@keyframes lsplash-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.lsplash-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  overflow: hidden;
+}
+.lsplash-fill {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+  will-change: transform;
+}
+/* moving highlight inside the bar */
+
+.lsplash-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+.lsplash-percent {
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}
+
+.lsplash-hint {
+  position: absolute;
+  bottom: 12px;
+  width: 100%;
+  text-align: center;
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: 10px;
+  color: #334155;
+  pointer-events: none;
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .lsplash-root,
+  .lsplash-logo,
+  .lsplash-glow,
+  .lsplash-floor,
+  .lsplash-progress,
+  .lsplash-kline,
+  .lsplash-fill::after { animation: none !important; }
+  .lsplash-sweep { display: none; }
 }

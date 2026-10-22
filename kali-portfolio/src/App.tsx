@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import BootScreen from './components/BootScreen'
+import BootSequence from './components/BootSequence'
 import Desktop from './components/Desktop'
 
 function App() {
@@ -10,7 +10,7 @@ function App() {
       {booted ? (
         <Desktop />
       ) : (
-        <BootScreen onComplete={() => setBooted(true)} />
+        <BootSequence onComplete={() => setBooted(true)} />
       )}
     </div>
   )
