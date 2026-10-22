@@ -16,6 +16,7 @@ type WindowFrameProps = {
   initialPosition?: { x: number; y: number }
   initialSize?: { width: number; height: number }
   zIndex?: number
+  hidden?: boolean
 }
 
 type Workspace = { width: number; height: number }
@@ -72,6 +73,7 @@ export default function WindowFrame({
   initialPosition = { x: 120, y: 80 },
   initialSize = { width: 880, height: 560 },
   zIndex = 10,
+  hidden = false,
 }: WindowFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState(initialPosition)
@@ -185,7 +187,11 @@ export default function WindowFrame({
   return (
     <div
       ref={rootRef}
-      style={{ ...frameStyle, zIndex }}
+      style={{
+        ...frameStyle,
+        zIndex,
+        ...(hidden ? { display: 'none' as const } : {}),
+      }}
       className="absolute flex flex-col overflow-hidden rounded-xl border border-cyan-300/25 bg-[#0b0f16]/95 shadow-[0_24px_60px_rgba(0,0,0,0.65)] backdrop-blur-md"
     >
       <div

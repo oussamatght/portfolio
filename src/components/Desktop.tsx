@@ -3,6 +3,7 @@ import {
   Activity,
   Battery,
   Code2,
+  Download,
   FileText,
   Folder,
   FolderOpen,
@@ -23,9 +24,10 @@ import FileManager from "./FileManager";
 import TerminalApp from "./TerminalApp";
 import WindowFrame from "./WindowFrame";
 import { projects } from "../data/projects";
+import { profile } from "../data/profile";
 import { useCoarsePointer } from "../hooks/useCoarsePointer";
 import dragonWallpaper from "../assets/Neon Dragon Developer Brandscape.png";
-import resumePdf from "../assets/oussamaCV.pdf.pdf";
+import profilePhoto from "../assets/BEST OUSSAMA PHOTO.png";
 
 type WindowKind = "files" | "terminal" | "about";
 
@@ -41,15 +43,16 @@ const BASE_Z_INDEX = 20;
 
 // Replace these profile URLs with your public profile URLs before publishing.
 const PROFILE_LINKS = [
-  { label: "GitHub", href: "https://github.com/oussamatght", icon: Code2 },
+  { label: "GitHub", href: profile.github, icon: Code2 },
+  { label: "LinkedIn", href: profile.linkedin, icon: Globe },
+  { label: "Email", href: profile.emailHref, icon: Mail },
   {
-    label: "LinkedIn",
-    href: "https://www.linkedin.com/in/taright-oussama",
-    icon: Globe,
+    label: "Resume",
+    href: profile.resumePath,
+    icon: FileText,
+    download: profile.resumeFileName,
   },
-  { label: "Email", href: "mailto:oussamatght6@gmail.com", icon: Mail },
-  { label: "Resume", href: resumePdf, icon: FileText },
-];
+] as const;
 
 const APP_LABELS: Record<WindowKind, string> = {
   files: "Files",
@@ -257,112 +260,105 @@ export default function Desktop() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_43%,rgba(14,165,164,.13),transparent_50%)]"
       />
 
-     
-<div className="relative flex h-full min-h-0 flex-col">
-  {/* Top bar */}
-  <header className="relative z-40 flex h-11 shrink-0 items-center gap-2 border-b border-cyan-300/15 bg-[#050913]/75 px-2 backdrop-blur-xl sm:gap-3 sm:px-5">
-    {/* Application menu and profile */}
-    <button
-      type="button"
-      onClick={() => setMenuOpen((open) => !open)}
-      aria-expanded={menuOpen}
-      aria-label="Toggle application menu"
-      className="group inline-flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 sm:px-2"
-    >
-      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-md border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_18px_rgba(34,211,238,0.12)]">
-        <img
-          src="/src/assets/BEST OUSSAMA PHOTO.png"
-          alt="Oussama profile photo"
-          width={28}
-          height={28}
-          className="size-full rounded-md object-cover object-center"
-        />
-      </span>
+      <div className="relative flex h-full min-h-0 flex-col">
+        {/* Top bar */}
+        <header className="relative z-40 flex h-11 shrink-0 items-center gap-2 border-b border-cyan-300/15 bg-[#050913]/75 px-2 backdrop-blur-xl sm:gap-3 sm:px-5">
+          {/* Application menu and profile */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-label="Toggle application menu"
+            className="group inline-flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 sm:px-2"
+          >
+            <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-md border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_18px_rgba(34,211,238,0.12)]">
+              <img
+                src={profilePhoto}
+                alt="Oussama profile photo"
+                width={28}
+                height={28}
+                className="size-full rounded-md object-cover object-center"
+              />
+            </span>
 
-      <span className="hidden text-xs font-semibold tracking-wide text-slate-100 min-[380px]:inline">
-        Oussama OS
-      </span>
-    </button>
+            <span className="hidden text-xs font-semibold tracking-wide text-slate-100 min-[380px]:inline">
+              Oussama OS
+            </span>
+          </button>
 
-    <span className="hidden h-4 w-px bg-cyan-200/20 sm:block" />
+          <span className="hidden h-4 w-px bg-cyan-200/20 sm:block" />
 
-    <span className="hidden text-xs text-cyan-100/65 sm:block">
-      Portfolio workspace
-    </span>
+          <span className="hidden text-xs text-cyan-100/65 sm:block">
+            Portfolio workspace
+          </span>
 
-    <span className="flex-1" />
+          <span className="flex-1" />
 
-    {/* System status and controls */}
-    <div className="flex shrink-0 items-center gap-1 text-cyan-100/75 sm:gap-3">
-      <span
-        className="hidden items-center gap-1.5 sm:flex"
-        title="Network status"
-        aria-label="Network status"
-      >
-        <Wifi size={14} />
-      </span>
+          {/* System status and controls */}
+          <div className="flex shrink-0 items-center gap-1 text-cyan-100/75 sm:gap-3">
+            <span
+              className="hidden items-center gap-1.5 sm:flex"
+              title="Network status"
+              aria-label="Network status"
+            >
+              <Wifi size={14} />
+            </span>
 
-      <span className="hidden sm:block" title="Audio status">
-        <Volume2 size={14} />
-      </span>
+            <span className="hidden sm:block" title="Audio status">
+              <Volume2 size={14} />
+            </span>
 
-      <span className="hidden sm:block" title="Battery status">
-        < Battery size={15} />
-      </span>
+            <span className="hidden sm:block" title="Battery status">
+              <Battery size={15} />
+            </span>
 
-      <button
-        type="button"
-        aria-label="Search applications"
-        aria-expanded={searchOpen}
-        onClick={() => {
-          setSearchOpen((open) => !open);
-          setMenuOpen(false);
-        }}
-        className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-      >
-        <Search size={15} />
-      </button>
+            <button
+              type="button"
+              aria-label="Search applications"
+              aria-expanded={searchOpen}
+              onClick={() => {
+                setSearchOpen((open) => !open);
+                setMenuOpen(false);
+              }}
+              className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+            >
+              <Search size={15} />
+            </button>
 
-      {/* Clock and date */}
-      <div className="min-w-[55px] text-right font-mono leading-tight sm:min-w-[74px]">
-        <div className="text-xs font-semibold tabular-nums text-cyan-300">
-          {clock}
-        </div>
+            {/* Clock and date */}
+            <div className="min-w-[55px] text-right font-mono leading-tight sm:min-w-[74px]">
+              <div className="text-xs font-semibold tabular-nums text-cyan-300">
+                {clock}
+              </div>
 
-        <div className="mt-0.5 hidden text-[9px] text-slate-400 md:block">
-          {date}
-        </div>
-      </div>
+              <div className="mt-0.5 hidden text-[9px] text-slate-400 md:block">
+                {date}
+              </div>
+            </div>
 
-      {/* Fullscreen */}
-      <button
-        type="button"
-        onClick={toggleFullscreen}
-        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/20 bg-cyan-300/5 text-cyan-300 transition-all duration-200 hover:border-cyan-300/50 hover:bg-cyan-300/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-      >
-        {isFullscreen ? (
-          <Minimize size={16} />
-        ) : (
-          <Maximize size={16} />
-        )}
-      </button>
+            {/* Fullscreen */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/20 bg-cyan-300/5 text-cyan-300 transition-all duration-200 hover:border-cyan-300/50 hover:bg-cyan-300/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+            >
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+            </button>
 
-      {/* Session / power menu */}
-      <button
-        type="button"
-        aria-label="Toggle session menu"
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((open) => !open)}
-        className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-      >
-        <Power size={15} />
-      </button>
-    </div>
-  </header>
-
-  
+            {/* Session / power menu */}
+            <button
+              type="button"
+              aria-label="Toggle session menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+              className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+            >
+              <Power size={15} />
+            </button>
+          </div>
+        </header>
 
         {/* Application menu */}
         {menuOpen && (
@@ -409,6 +405,18 @@ export default function Desktop() {
                   </button>
                 );
               })}
+              <div className="mt-1 border-t border-cyan-200/10 pt-1">
+                <a
+                  href={profile.resumePath}
+                  download={profile.resumeFileName}
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Download CV as PDF"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-slate-200 transition hover:bg-cyan-300/10 hover:text-cyan-100"
+                >
+                  <Download size={15} className="text-cyan-300" />
+                  Download CV (PDF)
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -464,54 +472,63 @@ export default function Desktop() {
         )}
 
         {/* Desktop workspace */}
-        <main className="relative flex min-h-0 flex-1 overflow-hidden">
+        <main
+          className="relative flex min-h-0 flex-1 overflow-hidden"
+          onPointerDown={(event) => {
+            if (event.currentTarget === event.target) {
+              setSelectedIcon(null);
+            }
+          }}
+        >
           <nav
             aria-label="Desktop shortcuts"
-            className="relative z-10 flex w-[76px] min-h-0 shrink-0 flex-col items-center gap-2 overflow-y-auto px-2 py-4 sm:w-[92px] sm:gap-3 sm:px-3 sm:py-5"
+            className="pointer-events-none absolute inset-0 z-0 p-2 sm:p-3"
           >
-            <DesktopIcon
-              label="Terminal"
-              icon={<TerminalIcon size={25} />}
-              selected={selectedIcon === "terminal"}
-              onSelect={() => setSelectedIcon("terminal")}
-              onOpen={() => openWindow("terminal")}
-            />
-            <DesktopIcon
-              label="Files"
-              icon={<FolderOpen size={25} />}
-              selected={selectedIcon === "files"}
-              onSelect={() => setSelectedIcon("files")}
-              onOpen={() => openWindow("files")}
-            />
-            <DesktopIcon
-              label="Browser"
-              icon={<Globe size={25} />}
-              selected={selectedIcon === "browser"}
-              onSelect={() => setSelectedIcon("browser")}
-              onOpen={() => openWindow("about")}
-            />
-            <DesktopIcon
-              label="Resume"
-              icon={<FileText size={24} />}
-              selected={selectedIcon === "resume"}
-              onSelect={() => setSelectedIcon("resume")}
-              onOpen={() => openWindow("about")}
-            />
-            {projects.map((project) => (
-              <DesktopIcon
-                key={project.id}
-                label={project.name}
-                icon={
-                  <Folder
-                    size={24}
-                    style={{ color: project.accent || "#38bdf8" }}
+            <ul className="desktop-icon-grid h-full max-h-full">
+              <li className="pointer-events-auto">
+                <DesktopIcon
+                  label="Terminal"
+                  icon={<TerminalIcon size={26} />}
+                  selected={selectedIcon === "terminal"}
+                  onSelect={() => setSelectedIcon("terminal")}
+                  onOpen={() => openWindow("terminal")}
+                />
+              </li>
+              <li className="pointer-events-auto">
+                <DesktopIcon
+                  label="Files"
+                  icon={<FolderOpen size={26} />}
+                  selected={selectedIcon === "files"}
+                  onSelect={() => setSelectedIcon("files")}
+                  onOpen={() => openWindow("files")}
+                />
+              </li>
+              <li className="pointer-events-auto">
+                <DesktopIcon
+                  label="Resume"
+                  icon={<FileText size={26} />}
+                  selected={selectedIcon === "resume"}
+                  onSelect={() => setSelectedIcon("resume")}
+                  onOpen={() => openWindow("about")}
+                />
+              </li>
+              {projects.map((project) => (
+                <li key={project.id} className="pointer-events-auto">
+                  <DesktopIcon
+                    label={project.name}
+                    icon={
+                      <Folder
+                        size={26}
+                        style={{ color: project.accent || "#38bdf8" }}
+                      />
+                    }
+                    selected={selectedIcon === project.id}
+                    onSelect={() => setSelectedIcon(project.id)}
+                    onOpen={() => openWindow("files", project.id)}
                   />
-                }
-                selected={selectedIcon === project.id}
-                onSelect={() => setSelectedIcon(project.id)}
-                onOpen={() => openWindow("files", project.id)}
-              />
-            ))}
+                </li>
+              ))}
+            </ul>
           </nav>
 
           {/* Right-side system monitor */}
@@ -559,18 +576,17 @@ export default function Desktop() {
           {!isCoarsePointer && (
             <div className="absolute bottom-5 right-4 z-10 hidden items-center gap-2 rounded-lg border border-cyan-200/15 bg-[#06101b]/45 px-3 py-2 font-mono text-[9px] text-slate-300/70 backdrop-blur-md md:flex xl:right-60">
               <LayoutGrid size={12} className="text-cyan-300/80" />
-              double-click an icon to open
+              click an icon to open
             </div>
           )}
 
           {/* Interactive application windows */}
           {windows.map((item) => {
-            if (item.minimized) return null;
-
             if (item.kind === "terminal") {
               return (
                 <TerminalApp
                   key={item.id}
+                  hidden={item.minimized}
                   zIndex={item.zIndex}
                   onClose={() => closeWindow(item.id)}
                   onMinimize={() => minimizeWindow(item.id)}
@@ -586,6 +602,7 @@ export default function Desktop() {
                   title="About — Oussama OS"
                   icon={<Code2 size={14} />}
                   zIndex={item.zIndex}
+                  hidden={item.minimized}
                   onClose={() => closeWindow(item.id)}
                   onMinimize={() => minimizeWindow(item.id)}
                   initialPosition={{ x: 260, y: 130 }}
@@ -595,7 +612,7 @@ export default function Desktop() {
                     <div className="mb-5 flex items-center gap-3">
                       <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
                         <img
-                          src="/src/assets/BEST OUSSAMA PHOTO.png"
+                          src={profilePhoto}
                           alt="Oussama profile photo"
                           width={48}
                           height={48}
@@ -615,6 +632,18 @@ export default function Desktop() {
                       Welcome to my Linux-inspired portfolio workspace. Explore
                       the projects, open the terminal, or browse the file
                       manager to discover my work and development setup.
+                    </p>
+                    <a
+                      href={profile.resumePath}
+                      download={profile.resumeFileName}
+                      aria-label="Download CV as PDF"
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-300/40 bg-gradient-to-r from-cyan-400/15 to-teal-400/10 px-4 py-2.5 font-mono text-sm font-semibold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.18)] transition hover:border-cyan-300/70 hover:bg-cyan-300/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                    >
+                      <Download size={16} className="text-cyan-300" />
+                      Download CV (PDF)
+                    </a>
+                    <p className="mt-2 text-center font-mono text-[10px] text-slate-500">
+                      {profile.resumeFileName} · {profile.resumePath}
                     </p>
                     <div className="mt-5 grid grid-cols-2 gap-2">
                       <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[.04] p-3">
@@ -645,9 +674,7 @@ export default function Desktop() {
                             <a
                               href={link.href}
                               download={
-                                link.label === "Resume"
-                                  ? "Oussama-CV.pdf"
-                                  : undefined
+                                "download" in link ? link.download : undefined
                               }
                               target={
                                 link.label === "Email" ||
@@ -664,7 +691,10 @@ export default function Desktop() {
                               className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white"
                             >
                               <Icon size={13} /> {link.label}{" "}
-                              <span aria-hidden="true">↗</span>
+                              {link.label === "Email" ||
+                              link.label === "Resume" ? null : (
+                                <span aria-hidden="true">↗</span>
+                              )}
                             </a>
                           </li>
                         );
@@ -679,6 +709,7 @@ export default function Desktop() {
               <FileManager
                 key={item.id}
                 zIndex={item.zIndex}
+                hidden={item.minimized}
                 initialProjectId={item.projectId}
                 onClose={() => closeWindow(item.id)}
                 onMinimize={() => minimizeWindow(item.id)}

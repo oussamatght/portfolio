@@ -130,7 +130,7 @@ export default function LinuxBootLog({ onDone, onEscape }: LinuxBootLogProps) {
 
   return (
     <div className="stage-in flex h-full w-full flex-col px-3 py-3 sm:px-6 sm:py-5">
-      <div className="terminal-scrollbar min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words">
+      <div className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words">
         {LINES.slice(0, lineCount).map((line, index) => (
           <div key={index} className={LINE_CLASS[line.kind]}>
             {line.text}
