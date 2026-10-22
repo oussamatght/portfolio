@@ -11,11 +11,13 @@ import {
 } from 'lucide-react'
 import WindowFrame from './WindowFrame'
 import { projects, type Project } from '../data/projects'
+import { useCoarsePointer } from '../hooks/useCoarsePointer'
 
 type Location = 'home' | 'projects' | 'project'
 
 type FileManagerProps = {
   onClose: () => void
+  onMinimize?: () => void
   zIndex?: number
   initialProjectId?: string
 }
@@ -68,7 +70,8 @@ function ProjectThumb({ project }: { project: Project }) {
   )
 }
 
-export default function FileManager({ onClose, zIndex = 10, initialProjectId }: FileManagerProps) {
+export default function FileManager({ onClose, onMinimize, zIndex = 10, initialProjectId }: FileManagerProps) {
+  const isCoarsePointer = useCoarsePointer()
   const initial = projects.find((project) => project.id === initialProjectId)
   const [location, setLocation] = useState<Location>(initial ? 'project' : 'home')
   const [activeProjectId, setActiveProjectId] = useState<string | null>(initial?.id ?? null)
@@ -129,12 +132,14 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
       title={`Files — ${path}`}
       icon={<FolderOpen size={14} />}
       onClose={onClose}
+      onMinimize={onMinimize}
       zIndex={zIndex}
       initialPosition={{ x: 140, y: 90 }}
       initialSize={{ width: 940, height: 580 }}
     >
-      <div className="flex h-full flex-col text-sm text-cyan-50/90">
-        <div className="flex items-center gap-2 border-b border-cyan-300/10 px-3 py-2">
+      {/* Container queries key every size decision to the window, not the viewport. */}
+      <div className="@container/fm flex h-full flex-col text-sm text-cyan-50/90">
+        <div className="flex flex-wrap items-center gap-2 border-b border-cyan-300/10 px-3 py-2">
           <button
             type="button"
             onClick={goUp}
@@ -143,7 +148,7 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
           >
             ../
           </button>
-          <div className="flex flex-1 items-center gap-1 overflow-hidden font-mono text-xs text-cyan-200/70">
+          <div className="flex min-w-[48px] flex-1 items-center gap-1 overflow-hidden font-mono text-xs text-cyan-200/70">
             {path.split('/').filter(Boolean).map((segment, index) => (
               <span key={segment} className="flex items-center gap-1">
                 {index > 0 && <ChevronRight size={11} className="opacity-50" />}
@@ -151,7 +156,7 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-2 rounded-md border border-cyan-300/20 px-2 py-1">
+          <div className="flex shrink-0 items-center gap-2 rounded-md border border-cyan-300/20 px-2 py-1">
             <Search size={12} className="text-cyan-300/70" />
             <input
               value={query}
@@ -163,7 +168,7 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
         </div>
 
         <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-44 shrink-0 border-r border-cyan-300/10 p-3 sm:block">
+          <aside className="hidden w-44 shrink-0 border-r border-cyan-300/10 p-3 @xl/fm:block">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-cyan-300/40">
               Places
             </p>
@@ -195,11 +200,11 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
             </ul>
           </aside>
 
-          <div className="min-w-0 flex-1 overflow-y-auto p-4">
+          <div className="min-w-0 flex-1 overflow-y-auto p-4 @container">
             {visibleEntries.length === 0 ? (
               <p className="font-mono text-xs text-cyan-300/50">No entries found.</p>
             ) : (
-              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <ul className="grid grid-cols-2 gap-2 @min-[420px]:grid-cols-3 @min-[480px]:grid-cols-4">
                 {visibleEntries.map((entry) => {
                   const isFolder = entry.kind === 'folder'
                   const isActive = selected === entry.name || selected === entry.projectId
@@ -207,7 +212,10 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
                     <li key={entry.name}>
                       <button
                         type="button"
-                        onClick={() => setSelected(entry.projectId ?? entry.name)}
+                        onClick={() => {
+                          setSelected(entry.projectId ?? entry.name)
+                          if (isCoarsePointer) openEntry(entry)
+                        }}
                         onDoubleClick={() => openEntry(entry)}
                         className={`flex w-full flex-col items-center gap-2 rounded-lg border p-3 transition ${
                           isActive
@@ -233,7 +241,7 @@ export default function FileManager({ onClose, zIndex = 10, initialProjectId }: 
           </div>
 
           {selectedProject && (
-            <aside className="hidden w-64 shrink-0 overflow-y-auto border-l border-cyan-300/10 p-3 lg:block">
+            <aside className="hidden w-64 shrink-0 overflow-y-auto border-l border-cyan-300/10 p-3 @2xl/fm:block">
               <div className="h-36 overflow-hidden rounded-lg border border-cyan-300/20">
                 <ProjectThumb project={selectedProject} />
               </div>

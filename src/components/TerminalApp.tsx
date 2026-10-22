@@ -239,8 +239,8 @@ export default function TerminalApp({
           </pre>
         ))}
 
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 text-cyan-300">
-          <span className="shrink-0">kali@kali:{cwd}$</span>
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-cyan-300">
+          <span className="min-w-0 break-all">kali@kali:{cwd}$</span>
           <input
             ref={inputRef}
             value={input}
@@ -248,7 +248,7 @@ export default function TerminalApp({
             onKeyDown={handleKeyDown}
             spellCheck={false}
             autoComplete="off"
-            className="w-full bg-transparent text-emerald-300 outline-none"
+            className="min-w-[12ch] max-w-full flex-1 bg-transparent text-emerald-300 outline-none"
           />
         </form>
       </div>

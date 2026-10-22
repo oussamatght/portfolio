@@ -17,13 +17,15 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-
+import { Maximize, Minimize } from "lucide-react";
 import DesktopIcon from "./DesktopIcon";
 import FileManager from "./FileManager";
 import TerminalApp from "./TerminalApp";
 import WindowFrame from "./WindowFrame";
 import { projects } from "../data/projects";
+import { useCoarsePointer } from "../hooks/useCoarsePointer";
 import dragonWallpaper from "../assets/Neon Dragon Developer Brandscape.png";
+import resumePdf from "../assets/oussamaCV.pdf.pdf";
 
 type WindowKind = "files" | "terminal" | "about";
 
@@ -46,7 +48,7 @@ const PROFILE_LINKS = [
     icon: Globe,
   },
   { label: "Email", href: "mailto:oussamatght6@gmail.com", icon: Mail },
-  { label: "Resume", href: "/src/assets/oussamaCV.pdf.pdf", icon: FileText },
+  { label: "Resume", href: resumePdf, icon: FileText },
 ];
 
 const APP_LABELS: Record<WindowKind, string> = {
@@ -102,6 +104,9 @@ function SystemMetric({
 }
 
 export default function Desktop() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const isCoarsePointer = useCoarsePointer();
   const [windows, setWindows] = useState<DesktopWindow[]>([]);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -109,6 +114,17 @@ export default function Desktop() {
   const [searchQuery, setSearchQuery] = useState("");
   const [now, setNow] = useState(() => new Date());
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
@@ -157,7 +173,17 @@ export default function Desktop() {
     setMenuOpen(false);
     setSearchOpen(false);
   }, []);
-
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.error("Fullscreen failed:", error);
+    }
+  };
   const closeWindow = useCallback((id: string) => {
     setWindows((current) => current.filter((item) => item.id !== id));
   }, []);
@@ -215,7 +241,7 @@ export default function Desktop() {
   }, [searchQuery]);
 
   return (
-    <div className="desktop-in relative h-dvh min-h-[520px] w-full select-none overflow-hidden bg-[#050913] text-cyan-50">
+    <div className="desktop-in relative h-dvh w-full select-none overflow-hidden bg-[#050913] text-cyan-50">
       {/* Imported asset URLs are handled by Vite for development and production builds. */}
       <div
         aria-hidden="true"
@@ -231,72 +257,112 @@ export default function Desktop() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_43%,rgba(14,165,164,.13),transparent_50%)]"
       />
 
-      <div className="relative flex h-full min-h-0 flex-col">
-        {/* Top bar */}
-        <header className="relative z-40 flex h-11 shrink-0 items-center gap-3 border-b border-cyan-300/15 bg-[#050913]/75 px-3 backdrop-blur-xl sm:px-5">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-label="Toggle application menu"
-            className="group inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-          >
-            <span className="grid size-7 place-items-center rounded-md border border-cyan-300/20 bg-cyan-300/10 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,.08)]">
-              <Code2 size={17} />
-            </span>
-            <span className="text-xs font-semibold tracking-wide text-slate-100">
-              Oussama OS
-            </span>
-          </button>
-          <span className="hidden h-4 w-px bg-cyan-200/20 sm:block" />
-          <span className="hidden text-xs text-cyan-100/65 sm:block">
-            Portfolio workspace
-          </span>
-          <span className="flex-1" />
+     
+<div className="relative flex h-full min-h-0 flex-col">
+  {/* Top bar */}
+  <header className="relative z-40 flex h-11 shrink-0 items-center gap-2 border-b border-cyan-300/15 bg-[#050913]/75 px-2 backdrop-blur-xl sm:gap-3 sm:px-5">
+    {/* Application menu and profile */}
+    <button
+      type="button"
+      onClick={() => setMenuOpen((open) => !open)}
+      aria-expanded={menuOpen}
+      aria-label="Toggle application menu"
+      className="group inline-flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 sm:px-2"
+    >
+      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-md border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_18px_rgba(34,211,238,0.12)]">
+        <img
+          src="/src/assets/BEST OUSSAMA PHOTO.png"
+          alt="Oussama profile photo"
+          width={28}
+          height={28}
+          className="size-full rounded-md object-cover object-center"
+        />
+      </span>
 
-          <div className="flex items-center gap-3 text-cyan-100/75">
-            <span
-              className="hidden items-center gap-1.5 sm:flex"
-              title="Network status"
-            >
-              <Wifi size={14} />
-            </span>
-            <span className="hidden sm:block" title="Audio status">
-              <Volume2 size={14} />
-            </span>
-            <span className="hidden sm:block" title="Battery status">
-              <Battery size={15} />
-            </span>
-            <button
-              type="button"
-              aria-label="Search applications"
-              aria-expanded={searchOpen}
-              onClick={() => {
-                setSearchOpen((open) => !open);
-                setMenuOpen(false);
-              }}
-              className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-            >
-              <Search size={15} />
-            </button>
-            <div className="min-w-[74px] text-right font-mono leading-tight">
-              <div className="text-xs font-semibold tabular-nums text-cyan-300">
-                {clock}
-              </div>
-              <div className="mt-0.5 hidden text-[9px] text-slate-400 md:block">
-                {date}
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label="Toggle session menu"
-              onClick={() => setMenuOpen((open) => !open)}
-              className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-            >
-              <Power size={15} />
-            </button>
-          </div>
-        </header>
+      <span className="hidden text-xs font-semibold tracking-wide text-slate-100 min-[380px]:inline">
+        Oussama OS
+      </span>
+    </button>
+
+    <span className="hidden h-4 w-px bg-cyan-200/20 sm:block" />
+
+    <span className="hidden text-xs text-cyan-100/65 sm:block">
+      Portfolio workspace
+    </span>
+
+    <span className="flex-1" />
+
+    {/* System status and controls */}
+    <div className="flex shrink-0 items-center gap-1 text-cyan-100/75 sm:gap-3">
+      <span
+        className="hidden items-center gap-1.5 sm:flex"
+        title="Network status"
+        aria-label="Network status"
+      >
+        <Wifi size={14} />
+      </span>
+
+      <span className="hidden sm:block" title="Audio status">
+        <Volume2 size={14} />
+      </span>
+
+      <span className="hidden sm:block" title="Battery status">
+        < Battery size={15} />
+      </span>
+
+      <button
+        type="button"
+        aria-label="Search applications"
+        aria-expanded={searchOpen}
+        onClick={() => {
+          setSearchOpen((open) => !open);
+          setMenuOpen(false);
+        }}
+        className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+      >
+        <Search size={15} />
+      </button>
+
+      {/* Clock and date */}
+      <div className="min-w-[55px] text-right font-mono leading-tight sm:min-w-[74px]">
+        <div className="text-xs font-semibold tabular-nums text-cyan-300">
+          {clock}
+        </div>
+
+        <div className="mt-0.5 hidden text-[9px] text-slate-400 md:block">
+          {date}
+        </div>
+      </div>
+
+      {/* Fullscreen */}
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/20 bg-cyan-300/5 text-cyan-300 transition-all duration-200 hover:border-cyan-300/50 hover:bg-cyan-300/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+      >
+        {isFullscreen ? (
+          <Minimize size={16} />
+        ) : (
+          <Maximize size={16} />
+        )}
+      </button>
+
+      {/* Session / power menu */}
+      <button
+        type="button"
+        aria-label="Toggle session menu"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen((open) => !open)}
+        className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+      >
+        <Power size={15} />
+      </button>
+    </div>
+  </header>
+
+  
 
         {/* Application menu */}
         {menuOpen && (
@@ -398,10 +464,10 @@ export default function Desktop() {
         )}
 
         {/* Desktop workspace */}
-        <main className="relative flex min-h-0 flex-1 h-[100%] overflow-hidden">
+        <main className="relative flex min-h-0 flex-1 overflow-hidden">
           <nav
             aria-label="Desktop shortcuts"
-            className="relative z-10 flex w-[76px]  h-[100%] shrink-0 flex-col  flex-wrap items-center gap-2  px-2 py-4 sm:w-[92px] sm:gap-3 sm:px-3 sm:py-5"
+            className="relative z-10 flex w-[76px] min-h-0 shrink-0 flex-col items-center gap-2 overflow-y-auto px-2 py-4 sm:w-[92px] sm:gap-3 sm:px-3 sm:py-5"
           >
             <DesktopIcon
               label="Terminal"
@@ -490,10 +556,12 @@ export default function Desktop() {
             </div>
           </aside>
 
-          <div className="absolute bottom-5 right-4 z-10 hidden items-center gap-2 rounded-lg border border-cyan-200/15 bg-[#06101b]/45 px-3 py-2 font-mono text-[9px] text-slate-300/70 backdrop-blur-md md:flex xl:right-60">
-            <LayoutGrid size={12} className="text-cyan-300/80" />
-            double-click an icon to open
-          </div>
+          {!isCoarsePointer && (
+            <div className="absolute bottom-5 right-4 z-10 hidden items-center gap-2 rounded-lg border border-cyan-200/15 bg-[#06101b]/45 px-3 py-2 font-mono text-[9px] text-slate-300/70 backdrop-blur-md md:flex xl:right-60">
+              <LayoutGrid size={12} className="text-cyan-300/80" />
+              double-click an icon to open
+            </div>
+          )}
 
           {/* Interactive application windows */}
           {windows.map((item) => {
@@ -525,8 +593,14 @@ export default function Desktop() {
                 >
                   <div className="h-full overflow-y-auto p-6 text-sm text-cyan-50/85">
                     <div className="mb-5 flex items-center gap-3">
-                      <div className="grid size-12 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">
-                        <Code2 size={25} />
+                      <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
+                        <img
+                          src="/src/assets/BEST OUSSAMA PHOTO.png"
+                          alt="Oussama profile photo"
+                          width={48}
+                          height={48}
+                          className="size-full object-cover object-center"
+                        />
                       </div>
                       <div>
                         <h2 className="font-mono text-xl tracking-widest text-cyan-100">
@@ -569,28 +643,33 @@ export default function Desktop() {
                         return (
                           <li key={link.label}>
                             <a
-  href={link.href}
-  download={link.label === "Resume" ? "Oussama-CV.pdf" : undefined}
-  target={
-    link.label === "Email" || link.label === "Resume"
-      ? undefined
-      : "_blank"
-  }
-  rel={
-    link.label === "Email" || link.label === "Resume"
-      ? undefined
-      : "noreferrer"
-  }
-  className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white"
->
-  <Icon size={13} /> {link.label}{" "}
-  <span aria-hidden="true">↗</span>
-</a>
+                              href={link.href}
+                              download={
+                                link.label === "Resume"
+                                  ? "Oussama-CV.pdf"
+                                  : undefined
+                              }
+                              target={
+                                link.label === "Email" ||
+                                link.label === "Resume"
+                                  ? undefined
+                                  : "_blank"
+                              }
+                              rel={
+                                link.label === "Email" ||
+                                link.label === "Resume"
+                                  ? undefined
+                                  : "noreferrer"
+                              }
+                              className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white"
+                            >
+                              <Icon size={13} /> {link.label}{" "}
+                              <span aria-hidden="true">↗</span>
+                            </a>
                           </li>
                         );
                       })}
                     </ul>
-                    
                   </div>
                 </WindowFrame>
               );
@@ -602,6 +681,7 @@ export default function Desktop() {
                 zIndex={item.zIndex}
                 initialProjectId={item.projectId}
                 onClose={() => closeWindow(item.id)}
+                onMinimize={() => minimizeWindow(item.id)}
               />
             );
           })}
