@@ -331,7 +331,7 @@ export const projects: Project[] = [
     year: '2026',
     stack: ['React', 'TypeScript', 'TanStack Start', 'TanStack Router', 'Vite', 'Nitro', 'Vercel'],
     tags: ['web', 'rtl', 'landing', 'open-source'],
-    image: '/src/assets/projects/sakinha.png',
+    image: '/src/assets/projects/sakinhaa.png',
     accent: '#38bdf8',
     featured: true,
     highlights: ['APK download + QR install flow', 'Full RTL support', 'Premium responsive UI/UX'],
