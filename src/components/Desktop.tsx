@@ -7,13 +7,12 @@ import {
   Folder,
   FolderOpen,
   Globe,
-  Link2 as Github,
   HardDrive,
   LayoutGrid,
+  Mail,
   Power,
   Search,
   Terminal as TerminalIcon,
-  Trash2,
   Volume2,
   Wifi,
   X,
@@ -24,7 +23,7 @@ import FileManager from "./FileManager";
 import TerminalApp from "./TerminalApp";
 import WindowFrame from "./WindowFrame";
 import { projects } from "../data/projects";
-import dragonWallpaper from "../assets/Neon Dragon Linux Tech Wallpaper.png";
+import dragonWallpaper from "../assets/Neon Dragon Developer Brandscape.png";
 
 type WindowKind = "files" | "terminal" | "about";
 
@@ -36,11 +35,18 @@ type DesktopWindow = {
   minimized: boolean;
 };
 
-// Replace these placeholder destinations with your real profiles before publishing.
+const BASE_Z_INDEX = 20;
+
+// Replace these profile URLs with your public profile URLs before publishing.
 const PROFILE_LINKS = [
-  { label: "GitHub", href: "https://github.com/", icon: Github },
-  { label: "LinkedIn", href: "https://www.linkedin.com/", icon: Globe },
-  { label: "Email", href: "mailto:kali@portfolio.dev", icon: FileText },
+  { label: "GitHub", href: "https://github.com/oussamatght", icon: Code2 },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/taright-oussama",
+    icon: Globe,
+  },
+  { label: "Email", href: "mailto:oussamatght6@gmail.com", icon: Mail },
+  { label: "Resume", href: "/src/assets/oussamaCV.pdf.pdf", icon: FileText },
 ];
 
 const APP_LABELS: Record<WindowKind, string> = {
@@ -49,9 +55,25 @@ const APP_LABELS: Record<WindowKind, string> = {
   about: "About",
 };
 
+const APPLICATIONS = [
+  { label: "Terminal", kind: "terminal" as const, icon: TerminalIcon },
+  { label: "File Manager", kind: "files" as const, icon: FolderOpen },
+  { label: "About Oussama", kind: "about" as const, icon: Code2 },
+];
+
 function formatWindowLabel(item: DesktopWindow) {
   if (item.kind !== "files" || !item.projectId) return APP_LABELS[item.kind];
-  return projects.find((project) => project.id === item.projectId)?.name ?? "Project files";
+  return (
+    projects.find((project) => project.id === item.projectId)?.name ??
+    "Project files"
+  );
+}
+
+function getTopZIndex(items: DesktopWindow[]) {
+  return items.reduce(
+    (highest, item) => Math.max(highest, item.zIndex),
+    BASE_Z_INDEX,
+  );
 }
 
 function SystemMetric({
@@ -71,7 +93,7 @@ function SystemMetric({
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-slate-700/60">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-teal-400 to-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.35)]"
+          className="h-full rounded-full bg-gradient-to-r from-teal-400 to-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.35)] transition-[width] duration-700"
           style={{ width }}
         />
       </div>
@@ -92,45 +114,46 @@ export default function Desktop() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Escape closes transient UI and leaves the desktop itself untouched.
   useEffect(() => {
     if (!menuOpen && !searchOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-        setSearchOpen(false);
-      }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      setSearchOpen(false);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [menuOpen, searchOpen]);
 
   const openWindow = useCallback((kind: WindowKind, projectId?: string) => {
+    const id = `${kind}-${projectId ?? "root"}`;
+
     setWindows((current) => {
-      const topZ = current.reduce((max, item) => Math.max(max, item.zIndex), 20);
-      const existing = current.find(
-        (item) => item.kind === kind && item.projectId === projectId,
-      );
+      const topZIndex = getTopZIndex(current);
+      const existing = current.find((item) => item.id === id);
 
       if (existing) {
         return current.map((item) =>
-          item.id === existing.id
-            ? { ...item, minimized: false, zIndex: topZ + 1 }
+          item.id === id
+            ? { ...item, minimized: false, zIndex: topZIndex + 1 }
             : item,
         );
       }
 
-      const id = `${kind}-${projectId ?? "root"}`;
-      return [
-        ...current,
-        {
-          id,
-          kind,
-          projectId,
-          zIndex: topZ + 1,
-          minimized: false,
-        },
-      ];
+      const newWindow: DesktopWindow = {
+        id,
+        kind,
+        projectId,
+        zIndex: topZIndex + 1,
+        minimized: false,
+      };
+
+      return [...current, newWindow];
     });
+
     setMenuOpen(false);
     setSearchOpen(false);
   }, []);
@@ -141,15 +164,24 @@ export default function Desktop() {
 
   const minimizeWindow = useCallback((id: string) => {
     setWindows((current) =>
-      current.map((item) => (item.id === id ? { ...item, minimized: true } : item)),
+      current.map((item) =>
+        item.id === id && !item.minimized ? { ...item, minimized: true } : item,
+      ),
     );
   }, []);
 
   const focusWindow = useCallback((id: string) => {
     setWindows((current) => {
-      const topZ = current.reduce((max, item) => Math.max(max, item.zIndex), 20);
+      const target = current.find((item) => item.id === id);
+      if (!target) return current;
+
+      const topZIndex = getTopZIndex(current);
+      if (!target.minimized && target.zIndex === topZIndex) return current;
+
       return current.map((item) =>
-        item.id === id ? { ...item, minimized: false, zIndex: topZ + 1 } : item,
+        item.id === id
+          ? { ...item, minimized: false, zIndex: topZIndex + 1 }
+          : item,
       );
     });
   }, []);
@@ -163,6 +195,7 @@ export default function Desktop() {
       }),
     [now],
   );
+
   const date = useMemo(
     () =>
       now.toLocaleDateString([], {
@@ -174,23 +207,20 @@ export default function Desktop() {
     [now],
   );
 
-  const filteredApps = [
-    { label: "Terminal", kind: "terminal" as const, icon: TerminalIcon },
-    { label: "File Manager", kind: "files" as const, icon: FolderOpen },
-    { label: "About Oussama", kind: "about" as const, icon: Code2 },
-  ].filter((app) => app.label.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+  const filteredApps = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return APPLICATIONS.filter((app) =>
+      app.label.toLowerCase().includes(query),
+    );
+  }, [searchQuery]);
 
   return (
     <div className="desktop-in relative h-dvh min-h-[520px] w-full select-none overflow-hidden bg-[#050913] text-cyan-50">
-      {/* Wallpaper. Put your landscape wallpaper at public/wallpaper.jpg for the closest match. */}
+      {/* Imported asset URLs are handled by Vite for development and production builds. */}
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `url('/wallpaper.jpg'), url(${dragonWallpaper})`,
-          backgroundPosition: "center",
-          backgroundSize: "cover, cover",
-        }}
+        style={{ backgroundImage: `url(${dragonWallpaper})` }}
       />
       <div
         aria-hidden="true"
@@ -208,29 +238,39 @@ export default function Desktop() {
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
+            aria-label="Toggle application menu"
             className="group inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
           >
             <span className="grid size-7 place-items-center rounded-md border border-cyan-300/20 bg-cyan-300/10 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,.08)]">
               <Code2 size={17} />
             </span>
-            <span className="text-xs font-semibold tracking-wide text-slate-100">Oussama OS</span>
+            <span className="text-xs font-semibold tracking-wide text-slate-100">
+              Oussama OS
+            </span>
           </button>
           <span className="hidden h-4 w-px bg-cyan-200/20 sm:block" />
-          <span className="hidden text-xs text-cyan-100/65 sm:block">Portfolio workspace</span>
+          <span className="hidden text-xs text-cyan-100/65 sm:block">
+            Portfolio workspace
+          </span>
           <span className="flex-1" />
+
           <div className="flex items-center gap-3 text-cyan-100/75">
-            <span className="hidden items-center gap-1.5 sm:flex" title="Network connected">
+            <span
+              className="hidden items-center gap-1.5 sm:flex"
+              title="Network status"
+            >
               <Wifi size={14} />
             </span>
-            <span className="hidden sm:block" title="Audio">
+            <span className="hidden sm:block" title="Audio status">
               <Volume2 size={14} />
             </span>
-            <span className="hidden sm:block" title="Power status">
+            <span className="hidden sm:block" title="Battery status">
               <Battery size={15} />
             </span>
             <button
               type="button"
               aria-label="Search applications"
+              aria-expanded={searchOpen}
               onClick={() => {
                 setSearchOpen((open) => !open);
                 setMenuOpen(false);
@@ -240,12 +280,16 @@ export default function Desktop() {
               <Search size={15} />
             </button>
             <div className="min-w-[74px] text-right font-mono leading-tight">
-              <div className="text-xs font-semibold tabular-nums text-cyan-300">{clock}</div>
-              <div className="mt-0.5 hidden text-[9px] text-slate-400 md:block">{date}</div>
+              <div className="text-xs font-semibold tabular-nums text-cyan-300">
+                {clock}
+              </div>
+              <div className="mt-0.5 hidden text-[9px] text-slate-400 md:block">
+                {date}
+              </div>
             </div>
             <button
               type="button"
-              aria-label="Open power and session menu"
+              aria-label="Toggle session menu"
               onClick={() => setMenuOpen((open) => !open)}
               className="rounded-md p-1.5 transition hover:bg-cyan-300/10 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
             >
@@ -258,15 +302,33 @@ export default function Desktop() {
         {menuOpen && (
           <div className="desktop-menu absolute left-3 top-12 z-[70] w-60 overflow-hidden rounded-xl border border-cyan-300/20 bg-[#08111d]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:left-5">
             <div className="border-b border-cyan-200/10 px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[.24em] text-cyan-300/60">Workspace</p>
-              <p className="mt-1 text-sm font-semibold text-slate-100">Oussama OS</p>
-              <p className="mt-0.5 font-mono text-[10px] text-slate-500">oussama@linux:~</p>
+              <p className="text-[10px] uppercase tracking-[.24em] text-cyan-300/60">
+                Workspace
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">
+                Oussama OS
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+                oussama@linux:~
+              </p>
             </div>
             <div className="p-2">
               {[
-                { label: "Terminal", icon: TerminalIcon, action: () => openWindow("terminal") },
-                { label: "File manager", icon: FolderOpen, action: () => openWindow("files") },
-                { label: "About this portfolio", icon: Code2, action: () => openWindow("about") },
+                {
+                  label: "Terminal",
+                  icon: TerminalIcon,
+                  action: () => openWindow("terminal"),
+                },
+                {
+                  label: "File manager",
+                  icon: FolderOpen,
+                  action: () => openWindow("files"),
+                },
+                {
+                  label: "About this portfolio",
+                  icon: Code2,
+                  action: () => openWindow("about"),
+                },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -285,7 +347,7 @@ export default function Desktop() {
           </div>
         )}
 
-        {/* App search */}
+        {/* Application search */}
         {searchOpen && (
           <div className="absolute left-1/2 top-14 z-[70] w-[min(420px,calc(100vw-28px))] -translate-x-1/2 overflow-hidden rounded-xl border border-cyan-300/20 bg-[#08111d]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
             <div className="flex items-center gap-2 border-b border-cyan-200/10 px-3">
@@ -311,30 +373,36 @@ export default function Desktop() {
               </button>
             </div>
             <div className="p-2">
-              {filteredApps.length ? filteredApps.map((app) => {
-                const Icon = app.icon;
-                return (
-                  <button
-                    key={app.kind}
-                    type="button"
-                    onClick={() => openWindow(app.kind)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-cyan-300/10"
-                  >
-                    <Icon size={17} className="text-cyan-300" />
-                    {app.label}
-                  </button>
-                );
-              }) : (
-                <p className="px-3 py-4 text-xs text-slate-500">No matching applications.</p>
+              {filteredApps.length ? (
+                filteredApps.map((app) => {
+                  const Icon = app.icon;
+                  return (
+                    <button
+                      key={app.kind}
+                      type="button"
+                      onClick={() => openWindow(app.kind)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-cyan-300/10"
+                    >
+                      <Icon size={17} className="text-cyan-300" />
+                      {app.label}
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="px-3 py-4 text-xs text-slate-500">
+                  No matching applications.
+                </p>
               )}
             </div>
           </div>
         )}
 
         {/* Desktop workspace */}
-        <main className="relative flex min-h-0 flex-1 overflow-hidden">
-          {/* Left desktop shortcuts */}
-          <nav aria-label="Desktop shortcuts" className="relative z-10 flex w-[76px] shrink-0 flex-col items-center gap-2 overflow-y-auto px-2 py-4 sm:w-[92px] sm:gap-3 sm:px-3 sm:py-5">
+        <main className="relative flex min-h-0 flex-1 h-[100%] overflow-hidden">
+          <nav
+            aria-label="Desktop shortcuts"
+            className="relative z-10 flex w-[76px]  h-[100%] shrink-0 flex-col  flex-wrap items-center gap-2  px-2 py-4 sm:w-[92px] sm:gap-3 sm:px-3 sm:py-5"
+          >
             <DesktopIcon
               label="Terminal"
               icon={<TerminalIcon size={25} />}
@@ -367,48 +435,34 @@ export default function Desktop() {
               <DesktopIcon
                 key={project.id}
                 label={project.name}
-                icon={<Folder size={24} style={{ color: project.accent || "#38bdf8" }} />}
+                icon={
+                  <Folder
+                    size={24}
+                    style={{ color: project.accent || "#38bdf8" }}
+                  />
+                }
                 selected={selectedIcon === project.id}
                 onSelect={() => setSelectedIcon(project.id)}
                 onOpen={() => openWindow("files", project.id)}
               />
             ))}
-            <div className="my-1 h-px w-8 shrink-0 bg-cyan-200/15" />
-            <DesktopIcon
-              label="Trash"
-              icon={<Trash2 size={23} />}
-              selected={selectedIcon === "trash"}
-              onSelect={() => setSelectedIcon("trash")}
-              onOpen={() => openWindow("files")}
-            />
           </nav>
 
-          {/* Central identity */}
-          <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-4 pb-10 sm:pb-14">
-            <div className="max-w-xl text-center">
-              <div className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl border border-cyan-300/25 bg-[#06101b]/50 text-cyan-300 shadow-[0_0_40px_rgba(34,211,238,.12)] backdrop-blur-md sm:size-14">
-                <Code2 size={27} strokeWidth={1.4} />
-              </div>
-              <h1 className="text-3xl font-black tracking-[.22em] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,.8)] sm:text-5xl">
-                OUSS<span className="text-cyan-300">A</span>MA
-              </h1>
-              <p className="mt-3 text-[9px] font-medium tracking-[.38em] text-cyan-100/75 sm:text-xs sm:tracking-[.48em]">
-                FULL STACK DEVELOPER
-              </p>
-              <div className="mx-auto mt-4 flex items-center justify-center gap-3 font-mono text-[9px] tracking-widest text-slate-400/80">
-                <span className="h-px w-8 bg-cyan-300/60" />
-                BUILD · SHIP · REPEAT
-                <span className="h-px w-8 bg-cyan-300/60" />
-              </div>
-            </div>
-          </div>
-
           {/* Right-side system monitor */}
-          <aside className="absolute right-4 top-5 z-10 hidden w-48 border-l border-cyan-300/35 pl-4 text-slate-200/90 xl:block 2xl:right-7 2xl:top-8 2xl:w-52" aria-label="Decorative system status">
-            <div className="font-mono text-4xl font-light tracking-wider text-cyan-300">{clock}</div>
+          <aside
+            className="absolute right-4 top-5 z-10 hidden w-48 border-l border-cyan-300/35 pl-4 text-slate-200/90 xl:block 2xl:right-7 2xl:top-8 2xl:w-52"
+            aria-label="Decorative system status"
+          >
+            <div className="font-mono text-4xl font-light tracking-wider text-cyan-300">
+              {clock}
+            </div>
             <p className="mt-1 text-[10px] text-slate-400">{date}</p>
             <div className="my-4 h-px bg-cyan-300/45" />
-            <p className="text-xs leading-relaxed text-slate-300">Code today,<br />build tomorrow.</p>
+            <p className="text-xs leading-relaxed text-slate-300">
+              Code today,
+              <br />
+              build tomorrow.
+            </p>
             <p className="mt-2 text-[10px] text-cyan-300">— Oussama</p>
 
             <div className="my-4 h-px bg-cyan-300/35" />
@@ -426,7 +480,9 @@ export default function Desktop() {
             </h2>
             <div className="flex items-center justify-between text-[10px]">
               <span className="text-slate-400">Projects</span>
-              <span className="font-mono text-cyan-100">{projects.length.toString().padStart(2, "0")}</span>
+              <span className="font-mono text-cyan-100">
+                {projects.length.toString().padStart(2, "0")}
+              </span>
             </div>
             <div className="mt-2 flex items-center justify-between text-[10px]">
               <span className="text-slate-400">Session</span>
@@ -434,13 +490,12 @@ export default function Desktop() {
             </div>
           </aside>
 
-          {/* Helpful shortcut hint */}
           <div className="absolute bottom-5 right-4 z-10 hidden items-center gap-2 rounded-lg border border-cyan-200/15 bg-[#06101b]/45 px-3 py-2 font-mono text-[9px] text-slate-300/70 backdrop-blur-md md:flex xl:right-60">
             <LayoutGrid size={12} className="text-cyan-300/80" />
             double-click an icon to open
           </div>
 
-          {/* Existing interactive apps/windows */}
+          {/* Interactive application windows */}
           {windows.map((item) => {
             if (item.minimized) return null;
 
@@ -474,44 +529,68 @@ export default function Desktop() {
                         <Code2 size={25} />
                       </div>
                       <div>
-                        <h2 className="font-mono text-xl tracking-widest text-cyan-100">OUSSAMA</h2>
-                        <p className="mt-1 font-mono text-[10px] tracking-[.2em] text-cyan-300/60">FULL STACK DEVELOPER</p>
+                        <h2 className="font-mono text-xl tracking-widest text-cyan-100">
+                          OUSSAMA
+                        </h2>
+                        <p className="mt-1 font-mono text-[10px] tracking-[.2em] text-cyan-300/60">
+                          FULL STACK DEVELOPER
+                        </p>
                       </div>
                     </div>
                     <p className="leading-relaxed text-slate-300">
-                      Welcome to my Linux-inspired portfolio workspace. Explore the projects, open the terminal, or browse the file manager to discover my work and development setup.
+                      Welcome to my Linux-inspired portfolio workspace. Explore
+                      the projects, open the terminal, or browse the file
+                      manager to discover my work and development setup.
                     </p>
                     <div className="mt-5 grid grid-cols-2 gap-2">
                       <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[.04] p-3">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500">Projects</p>
-                        <p className="mt-1 font-mono text-xl text-cyan-200">{projects.length.toString().padStart(2, "0")}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500">
+                          Projects
+                        </p>
+                        <p className="mt-1 font-mono text-xl text-cyan-200">
+                          {projects.length.toString().padStart(2, "0")}
+                        </p>
                       </div>
                       <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[.04] p-3">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500">Environment</p>
-                        <p className="mt-1 font-mono text-sm text-cyan-200">React + Linux</p>
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500">
+                          Environment
+                        </p>
+                        <p className="mt-1 font-mono text-sm text-cyan-200">
+                          React + Linux
+                        </p>
                       </div>
                     </div>
-                    <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[.24em] text-slate-400">Find me online</h3>
+                    <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[.24em] text-slate-400">
+                      Find me online
+                    </h3>
                     <ul className="mt-3 space-y-2">
                       {PROFILE_LINKS.map((link) => {
                         const Icon = link.icon;
                         return (
                           <li key={link.label}>
                             <a
-                              href={link.href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white"
-                            >
-                              <Icon size={13} /> {link.label} <span aria-hidden="true">↗</span>
-                            </a>
+  href={link.href}
+  download={link.label === "Resume" ? "Oussama-CV.pdf" : undefined}
+  target={
+    link.label === "Email" || link.label === "Resume"
+      ? undefined
+      : "_blank"
+  }
+  rel={
+    link.label === "Email" || link.label === "Resume"
+      ? undefined
+      : "noreferrer"
+  }
+  className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white"
+>
+  <Icon size={13} /> {link.label}{" "}
+  <span aria-hidden="true">↗</span>
+</a>
                           </li>
                         );
                       })}
                     </ul>
-                    <p className="mt-5 text-[10px] leading-relaxed text-slate-500">
-                      Update the profile links in Desktop.tsx with your real accounts before publishing.
-                    </p>
+                    
                   </div>
                 </WindowFrame>
               );
@@ -537,11 +616,31 @@ export default function Desktop() {
           <span className="flex-1" />
           <div className="flex items-center gap-1.5 rounded-xl border border-cyan-200/15 bg-[#07111d]/80 p-1 shadow-[0_8px_35px_rgba(0,0,0,.35)]">
             {[
-              { label: "Terminal", icon: TerminalIcon, action: () => openWindow("terminal") },
-              { label: "Files", icon: FolderOpen, action: () => openWindow("files") },
-              { label: "Projects", icon: Code2, action: () => openWindow("files") },
-              { label: "About", icon: Globe, action: () => openWindow("about") },
-              { label: "Applications", icon: LayoutGrid, action: () => setMenuOpen((open) => !open) },
+              {
+                label: "Terminal",
+                icon: TerminalIcon,
+                action: () => openWindow("terminal"),
+              },
+              {
+                label: "Files",
+                icon: FolderOpen,
+                action: () => openWindow("files"),
+              },
+              {
+                label: "Projects",
+                icon: Code2,
+                action: () => openWindow("files"),
+              },
+              {
+                label: "About",
+                icon: Globe,
+                action: () => openWindow("about"),
+              },
+              {
+                label: "Applications",
+                icon: LayoutGrid,
+                action: () => setMenuOpen((open) => !open),
+              },
             ].map((app) => {
               const Icon = app.icon;
               return (
@@ -565,19 +664,21 @@ export default function Desktop() {
           </div>
         </footer>
 
-        {/* Window switcher: minimized windows remain available from the taskbar. */}
+        {/* Restore minimized windows from the taskbar area. */}
         {windows.some((item) => item.minimized) && (
           <div className="absolute bottom-14 left-1/2 z-[65] flex max-w-[calc(100vw-24px)] -translate-x-1/2 gap-2 overflow-x-auto rounded-xl border border-cyan-200/15 bg-[#07111d]/90 p-2 shadow-2xl backdrop-blur-xl">
-            {windows.filter((item) => item.minimized).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => focusWindow(item.id)}
-                className="whitespace-nowrap rounded-lg px-3 py-2 text-xs text-cyan-100/80 transition hover:bg-cyan-300/10 hover:text-white"
-              >
-                {formatWindowLabel(item)}
-              </button>
-            ))}
+            {windows
+              .filter((item) => item.minimized)
+              .map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => focusWindow(item.id)}
+                  className="whitespace-nowrap rounded-lg px-3 py-2 text-xs text-cyan-100/80 transition hover:bg-cyan-300/10 hover:text-white"
+                >
+                  {formatWindowLabel(item)}
+                </button>
+              ))}
           </div>
         )}
       </div>
