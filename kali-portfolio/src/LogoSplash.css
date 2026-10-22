@@ -1,0 +1,519 @@
+
+/* ===== Oussama Linux Splash — matching desktop theme ===== */
+
+.lsplash-root {
+  --bg: #090b10;
+  --panel: #0c111b;
+  --text: #e5e7eb;
+  --muted: #64748b;
+  --subtle: #334155;
+  --border: #1f2937;
+  --teal: #0ea5a4;
+  --cyan: #38bdf8;
+  --exit-ms: 550ms;
+
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--text);
+  background: var(--bg);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  animation: lsplash-enter 500ms ease-out both;
+}
+
+.lsplash-root *,
+.lsplash-root *::before,
+.lsplash-root *::after {
+  box-sizing: border-box;
+}
+
+/* Background */
+
+.lsplash-vignette,
+.lsplash-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lsplash-vignette {
+  z-index: -1;
+  background:
+    radial-gradient(
+      ellipse at 50% 43%,
+      rgba(14, 165, 164, 0.10),
+      transparent 48%
+    ),
+    radial-gradient(
+      ellipse at center,
+      transparent 25%,
+      rgba(0, 0, 0, 0.65) 100%
+    ),
+    linear-gradient(
+      180deg,
+      #090b10,
+      #0b101a 50%,
+      #090b10
+    );
+}
+
+.lsplash-grain {
+  z-index: 5;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+}
+
+/* Header and footer */
+
+.lsplash-topbar,
+.lsplash-footer {
+  position: absolute;
+  z-index: 6;
+  left: clamp(20px, 4vw, 64px);
+  right: clamp(20px, 4vw, 64px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.lsplash-topbar {
+  top: clamp(22px, 4vh, 42px);
+}
+
+.lsplash-footer {
+  bottom: clamp(22px, 4vh, 42px);
+}
+
+.lsplash-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.lsplash-brand-dot,
+.lsplash-status-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 12px #0ea5a455;
+}
+
+.lsplash-edition {
+  color: #64748b;
+}
+
+/* Linux-style boot messages */
+
+.lsplash-kernel {
+  position: absolute;
+  z-index: 1;
+  top: 15%;
+  left: clamp(20px, 5vw, 76px);
+  width: min(480px, 58vw);
+  display: grid;
+  gap: 7px;
+  color: #64748b;
+  opacity: 0.68;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: clamp(9px, 0.75vw, 11px);
+}
+
+.lsplash-kline {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  line-height: 1.65;
+  animation: lsplash-log-in 250ms ease-out both;
+}
+
+.lsplash-log-time {
+  flex-shrink: 0;
+  color: #475569;
+}
+
+.lsplash-kline.kernel span:last-child {
+  color: #94a3b8;
+}
+
+.lsplash-kline.service span:last-child {
+  color: #94a3b8;
+}
+
+.lsplash-kline.ok span:last-child {
+  color: #5eead4;
+}
+
+/* Center composition */
+
+.lsplash-center {
+  position: relative;
+  z-index: 2;
+  width: min(620px, 90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  transform: translateY(-1vh);
+}
+
+.lsplash-logo-box {
+  position: relative;
+  width: min(420px, 76vw);
+  aspect-ratio: 1.48;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  animation: lsplash-logo-in 1100ms
+    cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.lsplash-logo {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 0 22px #38bdf81a);
+}
+
+.lsplash-blend {
+  mix-blend-mode: screen;
+}
+
+/* Teal ambient glow */
+
+.lsplash-glow {
+  position: absolute;
+  z-index: -1;
+  width: 68%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #0ea5a4;
+  opacity: 0.12;
+  filter: blur(85px);
+  animation: lsplash-glow 4s ease-in-out infinite alternate;
+}
+
+.lsplash-orbit {
+  position: absolute;
+  z-index: -1;
+  width: 69%;
+  aspect-ratio: 1;
+  border: 1px solid #38bdf81c;
+  border-radius: 50%;
+  box-shadow:
+    0 0 50px #38bdf808,
+    inset 0 0 35px #0ea5a408;
+}
+
+/* One-time cyan light sweep */
+
+.lsplash-sweep {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    #38bdf808 43%,
+    #e0f2feaa 49%,
+    #0ea5a455 51%,
+    transparent 60%
+  );
+  background-size: 240% 100%;
+  animation: lsplash-sweep 1600ms 550ms ease-in-out both;
+}
+
+/* Identity */
+
+.lsplash-identity {
+  margin-top: -4px;
+  text-align: center;
+  animation: lsplash-identity-in 900ms 200ms ease-out both;
+}
+
+.lsplash-name {
+  margin: 0;
+  padding-left: 0.22em;
+  color: #f1f5f9;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(34px, 6vw, 58px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.lsplash-name > span {
+  color: var(--teal);
+}
+
+.lsplash-role {
+  margin: 12px 0 0;
+  padding-left: 0.42em;
+  color: #94a3b8;
+  font-size: clamp(9px, 1.1vw, 12px);
+  letter-spacing: 0.42em;
+}
+
+.lsplash-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 21px;
+  color: #64748b;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.19em;
+}
+
+.lsplash-divider span {
+  width: clamp(22px, 5vw, 54px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--teal)
+  );
+}
+
+.lsplash-divider span:last-child {
+  transform: rotate(180deg);
+}
+
+/* Progress */
+
+.lsplash-progress {
+  width: min(350px, 76vw);
+  margin-top: clamp(32px, 6vh, 55px);
+  animation: lsplash-identity-in 900ms 350ms ease-out both;
+}
+
+.lsplash-progress-heading,
+.lsplash-progress-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lsplash-progress-heading {
+  margin-bottom: 12px;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.lsplash-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #cbd5e1;
+}
+
+.lsplash-status-dot {
+  width: 5px;
+  height: 5px;
+  animation: lsplash-pulse 1.4s ease-in-out infinite;
+}
+
+.lsplash-percent {
+  color: #e2e8f0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lsplash-track {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #64748b26;
+}
+
+.lsplash-fill {
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #0ea5a4,
+    #38bdf8
+  );
+  box-shadow: 0 0 12px #38bdf855;
+  will-change: transform;
+}
+
+.lsplash-progress-footer {
+  margin-top: 11px;
+  color: #64748b;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 9px;
+}
+
+.lsplash-progress-footer span:first-child {
+  color: #94a3b8;
+}
+
+.lsplash-progress-footer span:last-child {
+  letter-spacing: 0.13em;
+}
+
+.lsplash-skip span {
+  color: var(--teal);
+}
+
+/* Exit */
+
+.lsplash-exit {
+  pointer-events: none;
+  animation: lsplash-exit var(--exit-ms) ease-in forwards;
+}
+
+/* Animations */
+
+@keyframes lsplash-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lsplash-logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(15px) scale(.96);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes lsplash-identity-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lsplash-log-in {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes lsplash-sweep {
+  0% {
+    opacity: 0;
+    background-position: 100% 0;
+  }
+  20% { opacity: .65; }
+  75% { opacity: .25; }
+  100% {
+    opacity: 0;
+    background-position: 0 0;
+  }
+}
+
+@keyframes lsplash-glow {
+  from {
+    opacity: .08;
+    transform: scale(.9);
+  }
+  to {
+    opacity: .17;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes lsplash-pulse {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
+
+@keyframes lsplash-exit {
+  to {
+    opacity: 0;
+    transform: scale(1.015);
+    filter: blur(5px);
+    visibility: hidden;
+  }
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+  .lsplash-kernel {
+    top: 12%;
+    width: calc(100% - 40px);
+    opacity: .38;
+  }
+
+  .lsplash-kline {
+    font-size: 9px;
+  }
+
+  .lsplash-center {
+    transform: translateY(1vh);
+  }
+
+  .lsplash-logo-box {
+    width: min(340px, 83vw);
+  }
+
+  .lsplash-role {
+    letter-spacing: .25em;
+    padding-left: .25em;
+  }
+
+  .lsplash-footer,
+  .lsplash-topbar {
+    font-size: 8px;
+  }
+}
+
+/* Accessibility */
+
+@media (prefers-reduced-motion: reduce) {
+  .lsplash-root,
+  .lsplash-logo,
+  .lsplash-glow,
+  .lsplash-sweep,
+  .lsplash-progress,
+  .lsplash-kline,
+  .lsplash-status-dot {
+    animation: none !important;
+  }
+
+  .lsplash-sweep {
+    display: none;
+  }
+}

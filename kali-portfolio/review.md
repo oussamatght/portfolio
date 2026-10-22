@@ -1,211 +1,173 @@
-# Task 0 — Existing Project Audit (No Code Changes)
+# Task 0 — Existing Project Audit v2 (No Code Changes)
 
-**Scope:** read-only inspection of the Kali Linux-inspired React + TypeScript portfolio.
-This audit made **no** changes to application code. The only file created by this task is this report (`review.md`).
-**Date of audit:** October 22, 2026 (based on the working tree *before* any commit — see §1.3).
+**Scope:** read-only re-inspection of the Kali Linux-inspired React + TypeScript portfolio ("Kali Portfolio OS / Oussama OS"), after the desktop rewrite, the splash rewrite, and the white-screen incident.
+This audit made **no** changes to application code. The only file updated by this task is this report (`review.md`) — updated from the previous audit version to reflect everything that is new.
+**Audit v2 date:** October 22, 2026 (state of the working tree as verified below).
 
-Legend used throughout:
+Legend:
 
-- ✅ **Verified fact** — seen directly in a file, a directory listing, or from a command actually run in this audit.
-- 🤔 **Assumption / analysis** — reasoning based on reading the code, not a runtime observation.
+- ✅ **Verified fact** — seen in a file, directory listing, or a command actually run in this audit.
+- 🤔 **Assumption / analysis** — reasoning from reading code, not a runtime observation.
 
 ---
 
-## 1. Application architecture and main entry points
+## What's new since the first audit (review.cosale — changelog)
 
-### 1.1 Stack ✅
-
-From `package.json` (verified):
-
-- React 19.3 + React DOM 19.3 (TypeScript 6, one single-page app, no router).
-- Vite 8.3 as the dev server and bundler (`vite.config.ts` has only two plugins: `react()` and `tailwindcss()`).
-- Tailwind CSS **v4** via `@tailwindcss/vite` (verified: styling is utility classes in components plus a global `src/index.css` — there is no `tailwind.config` file, which is normal for Tailwind v4).
-- One dependency beyond React: `lucide-react` for icons. Nothing else is installed — no router, no state library, no UI kit.
-
-### 1.2 Entry chain ✅
-
-```
-index.html            (@/index.html, mounts <div id="root">, title "Kali Portfolio OS")
-  └─ src/main.tsx     (createRoot + <App /> inside <StrictMode>)
-      └─ src/App.tsx  (state machine: `booted ? <Desktop /> : <BootSequence />`)
-```
-
-`src/App.tsx` is the topmost decision point: one boolean (`booted`) chooses between the full-screen boot overlay and the desktop. There is no routing — the "pages" of this app are full-screen overlays plus floating windows.
-
-### 1.3 Git state of the architecture ✅
-
-`git status` (run in this audit) shows:
-
-- 3 commits exist, the newest being `29eab30 feat : add boot page and other components`.
-- **All boot-sequence work is currently uncommitted**: `src/components/BootSequence.tsx`, `GrubMenu.tsx`, `GrubSubmenu.tsx`, `LinuxBootLog.tsx`, `LogoSplash.tsx`, `MemoryTestScreen.tsx`, `RecoveryConsole.tsx` and `src/hooks/` are **untracked**, `App.tsx`/`index.css` are **modified**, and the old `BootScreen.tsx` is **deleted**.
-
-🤔 Why this matters to a beginner: until these files are committed, the working tree is the only copy of the entire new boot experience. A stray `git checkout .` would erase it. Committing is a bookkeeping problem, not a code problem — but it is the cheapest insurance available.
-
-### 1.4 Component layers ✅
-
-| Layer | File(s) | Role |
+| Change | Files | Status |
 |---|---|---|
-| Boot coordinator | `src/components/BootSequence.tsx` | Boot-stage state machine, mounts nothing of the desktop itself |
-| Boot screens | `GrubMenu`, `GrubSubmenu`, `LinuxBootLog`, `LogoSplash`, `RecoveryConsole`, `MemoryTestScreen` | One full-screen stage each |
-| Shared hook | `src/hooks/usePrefersReducedMotion.ts` | Reactive `prefers-reduced-motion` |
-| Desktop shell | `src/components/Desktop.tsx` | Wallpaper, top bar, window manager, taskbar |
-| Windows | `WindowFrame.tsx` (frame + drag), `TerminalApp.tsx`, `FileManager.tsx` | Window contents |
-| Widget | `DesktopIcon.tsx` | Single-click select / double-click open |
+| **Boot work committed** — the previously at-risk untracked GRUB/boot components are now checked in as `c667dd2 feat: add Kali-style boot sequence` | all `src/components/Boot*`, `Grub*`, `Linux*`, `Recovery*`, `src/hooks/` | ✅ resolved risk #3 from audit v1 |
+| **White-screen incident fixed** — the pasted new `Desktop.tsx` imported a `Github` icon; the installed `lucide-react` no longer exports brand icons, so the build failed (`TS2305`) and the page rendered blank white. Fixed by importing a generic link icon as an alias: `Link2 as Github` (kept the visual + all existing usages valid). Verified after the fix: `npm run build` exit 0, `npm run lint` exit 0, `vite preview` served HTTP 200 | `src/components/Desktop.tsx` | ✅ fixed & verified |
+| **Desktop completely rewritten** by you — "Oussama OS" theme: app-launcher search palette, bottom dock, minimized-window switcher, right-side decorative system monitor (CPU/RAM/GPU bars, big clock), central identity hero (OUSSAMA / FULL STACK DEVELOPER / BUILD · SHIP · REPEAT), new Browser & Resume desktop icons, Trash now opens the Files window, Escape closes menu/search, `h-dvh` mobile-friendly viewport height | `src/components/Desktop.tsx` | ✅ verified by full file read |
+| **LogoSplash rewritten into a polished "Oussama Linux Splash"** — dedicated stylesheet `src/LogoSplash.css` (82 `.lsplash-*` rules), timed boot-log lines, rAF-driven smoothstep progress bar, name/role identity reveal, one-time light sweep masked to the logo image, glow + orbit ring, exit fade, reduced-motion support. **Every `lsplash-*` class used in the JSX is now defined in the CSS** (verified by diff-sorting class names from both files — zero missing) — this resolves audit v1's biggest problem | `src/components/LogoSplash.tsx`, `src/LogoSplash.css` | ✅ verified |
+| **New asset added but unused** — `src/assets/Neon Linux User Emblem.png` is on disk (untracked) but referenced by **no** file in `src/` (verified by code search) | `src/assets/` | ✅ noted, harmless |
+| Branding drifted "Kali" → "Oussama": window titles, `oussama@linux` prompt strings, hero text. The boot simulation still says "Kali" (GRUB entries, `kali@kali` prompts) — a cosmetic mix, not a bug 🤔 | Desktop, TerminalApp, boot components | ✅ observed |
 
 ---
 
-## 2. Current boot splash, desktop, window manager, file manager, terminal
+## How this web "OS" was built (beginner-friendly tour)
 
-### 2.1 Boot splash ✅
+This is **not** an operating system — it's a normal single-page web app that *pretends* to boot like one, built only with React + TypeScript + Tailwind CSS (no extra runtime packages beyond `lucide-react` icons).
 
-- The old `BootScreen.tsx` is deleted (verified in file listing). Its replacement is `BootSequence.tsx` + six stage components.
-- Stage 1 (firmware/BIOS) is implemented inside `BootSequence.tsx`: 7 SeaBIOS-style lines printed every 170 ms, then automatic hand-off to GRUB; any non-modifier key skips ahead (verified by reading the file).
-- The splash stage referenced by the state machine is `LogoSplash.tsx`. ⚠️ Its styling problem is detailed in §8/§Problems below — the component **is rendered**, but its CSS is currently missing.
+1. **The trick behind "booting an OS":** `index.html` loads `src/main.tsx`, which renders `App.tsx`. `App` holds a single boolean state, `booted`. While `booted === false`, React shows the full-screen `<BootSequence />` overlay; once any boot path finishes, `onComplete` flips the boolean and React swaps in `<Desktop />` (verified in `App.tsx`). Because it's a plain conditional render, no boot component's timers or keyboard listeners can survive into the desktop — the component that owned them gets unmounted.
+2. **Boot coordinator as a state machine:** `BootSequence.tsx` stores the current stage in one state variable — `firmware → grub → advanced-menu → recovery / boot-log → logo-splash → desktop`, plus a `memtest↔grub` branch. Each stage is one conditional `<div>`; entering a stage unmounts the previous screen. The firmware stage prints 7 SeaBIOS-style lines every 170 ms (each on its own `setTimeout`, all tracked in a ref and cleared on unmount), then hands over to GRUB.
+3. **The GRUB menu:** `GrubMenu.tsx` draws the box with Unicode box-drawing characters (`┌ ─ │`) rendered monospace over clickable `<button>` rows. The 15-second countdown is a `setTimeout` chain that ticks one state variable down each second; when it reaches 0 it calls `onSelect(index)` to boot. ↑/↓ move a highlighted index and start the countdown over, Enter boots what's highlighted, Escape pauses/resumes, mouse hover pauses, mouse click selects. The submenu reuses the same component with `countdownSeconds = 0` (no auto-boot in the advanced menu, exactly like real GRUB).
+4. **The simulated screens:** `LinuxBootLog.tsx` prints timed `systemd`-style messages with a progress bar; `RecoveryConsole.tsx` types out fsck/journal diagnostics with Enter = continue / Escape = return; `MemoryTestScreen.tsx` animates a bounded memtest86+ (9 s, then returns) with a simulation disclaimer. All timers live in refs and are cleaned up in their effects' return functions.
+5. **The logo splash:** `LogoSplash.tsx` reuses your actual asset `src/assets/Neon Dragon Linux Tech Wallpaper.png` (the same PNG your desktop wallpaper uses), masked for a one-time light sweep, with a rAF-driven progress bar and timed boot-log lines. Its look lives in a dedicated `LogoSplash.css` with CSS keyframes; the shared hook `usePrefersReducedMotion.ts` lets every animated screen degrade gracefully when the visitor asks the OS for less motion.
+6. **The desktop:** `Desktop.tsx` builds the OS chrome — wallpaper layers, top bar with clock, app menu / search palette, desktop icons, a dock, and a "window manager". The manager is just an array in React state (`windows`, each with `kind`, `zIndex`, `minimized`); opening, focusing and minimizing are plain state updates, and `WindowFrame.tsx` handles dragging via pointer events. `FileManager.tsx` walks a fake filesystem derived from `src/data/projects.ts`, and `TerminalApp.tsx` is a text-input-driven fake shell (`ls`, `cd`, `cat`, `open`, `neofetch`…) that never touches a real shell — everything is a browser simulation by design.
+7. **Why there was ever a white screen:** a Vite/React app renders nothing until its JavaScript bundle builds and executes successfully. One failed import (`Github` from `lucide-react`) is enough to blank the whole page — which is why the build command is the project's health check.
 
-### 2.2 Desktop ✅
+---
 
-`Desktop.tsx` (verified by reading it in full):
+## 1. Application architecture and main entry points ✅
 
-- Wallpaper: layered CSS background `url('/wallpaper.jpg'), url(<dragon PNG>)` — both files exist (verified: `public/wallpaper.jpg` and `src/assets/Neon Dragon Linux Tech Wallpaper.png`), so the first always renders unless it fails to load.
-- Top bar: "Applications" menu (Terminal / File Manager / About), fake status icons (Wi-Fi/volume/battery from lucide), live clock updated via a `setInterval` that is **cleanly cleared** in its own effect.
-- Desktop icons: Files, Terminal, one folder icon per project from `projects.ts`, plus Trash.
+Unchanged in shape; verified fresh:
 
-### 2.3 Window manager ✅
+- **Stack:** React 19.3 + TypeScript 6 + Vite 8 + Tailwind CSS v4 (`@tailwindcss/vite`), one dependency beyond React (`lucide-react`). **Git:** 4 commits now; `c667dd2 feat: add Kali-style boot sequence` contains the boot feature, and the working tree has 2 modified files + 2 untracked files (see §1.3) — all about the desktop/splash rewrite.
+- **Entry chain:** `index.html → src/main.tsx → src/App.tsx` (`booted ? <Desktop /> : <BootSequence />`).
+- **Component layers** (verified file listing): boot coordinator + 6 boot screens + 1 shared hook (`src/hooks/usePrefersReducedMotion.ts`), desktop shell, window frame, terminal, file manager, icon widget, and `src/data/projects.ts` for content.
 
-`Desktop.tsx` keeps a `windows` array (`{ id, kind, projectId, zIndex, minimized }`) and provides `openWindow / closeWindow / minimizeWindow / focusWindow`. 🤔 The logic is sound (focus raises `zIndex`, re-opening an existing window restores it); windows are **not** rendered when `minimized`, and the taskbar buttons restore them by calling `focusWindow` — which also un-minimizes (it sets `minimized: false` in `focusWindow`). Good detail: two Terminal windows of the same kind share one id (`terminal-r...` no — id is `terminal-root` style `${kind}-${projectId ?? 'root'}`), so clicking Terminal twice re-opens the same window instead of duplicating it.
+### 1.3 Git state ✅
 
-### 2.4 WindowFrame ✅
+```
+M  src/components/Desktop.tsx        (your new Oussama OS desktop + my Github→Link2 fix)
+M  src/components/LogoSplash.tsx     (splash rewrite)
+?? src/LogoSplash.css                (new splash stylesheet)
+?? src/assets/Neon Linux User Emblem.png  (new, currently unreferenced)
+```
 
-`WindowFrame.tsx`: draggable via pointer events with `setPointerCapture` (modern, reliable on touch too), close/minimize/maximize buttons. 🤔 One design quirk: **"maximize" is really "resize back to the initial position/size"** — `toggleMaximize` sets `position {0,0}` and `size = initialSize`, while the maximized style branch actually fills 100%×100%. The first click covers the screen, a second click snaps it back to the original size. Functional but unusual; safe to leave.
+🤔 The boot feature is safe in history now, but the *new* splash CSS and desktop rewrite are once again only in the working tree — commit them to repeat the earlier protection.
 
-### 2.5 File manager ✅ (with gaps in §6)
+---
 
-`FileManager.tsx`: three locations (`home` → `projects` → one project), a breadcrumb, live search filter, places sidebar, project detail panel with thumbnail. The thumbnail has a graceful failure mode (`ProjectThumb` falls back to a colored letter tile if the image fails to load — good defensive design).
+## 2. Current boot splash, desktop, window manager, file manager, terminal ✅
 
-### 2.6 Terminal ✅
-
-`TerminalApp.tsx`: a **simulated** shell (no real shell — matches the project's "browser simulation" intent). Commands: `help, ls, cd, pwd, cat, projects, open, whoami, neofetch, date, clear, exit`, plus arrow-key command history. `open <project>` calls `onOpenProject` which opens the matching FileManager window from Desktop — verified the wiring exists.
+- **Boot splash** — `BootSequence.tsx` firmware stage → `GrubMenu` → (per menu choice) `LinuxBootLog` / `RecoveryConsole` / `MemoryTestScreen` → `LogoSplash` → desktop. All verified by reading current files.
+- **Desktop** — heavily upgraded (§ What's new). Window manager state logic is the same sound pattern as before, now with:
+  - **App search palette** (top-bar magnifier, filters 3 apps, Escape closes, cleanup-safe listener);
+  - **Dock** with 5 launchers;
+  - **Minimized-window switcher** above the dock (only rendered when something is minimized);
+  - **Decorative system monitor** — static/fake CPU 12%, RAM 4.1/15.4 GB, GPU 3% bars — labeled "Decorative system status" with `aria-label`, so it's honest about being simulated ✅.
+- **Window manager** — `openWindow` dedupes windows by `kind+projectId` and raises `zIndex`; `focusWindow` also un-minimizes. Same clean React state approach as audit v1.
+- **WindowFrame** — pointer-event dragging with capture; 🤔 still clamps only `Math.max(0, …)`, so windows can still be dragged past the right/bottom edge (unchanged from v1).
+- **File manager** — unchanged: home → projects → project-detail navigation, live search filter, graceful image-failure fallback.
+- **Terminal** — unchanged: fake shell with 12 commands, arrow-key history, `open <project>` wired to the window manager.
 
 ---
 
 ## 3. How the boot sequence transitions into the desktop ✅
 
-Path (verified by reading `App.tsx` and `BootSequence.tsx`):
-
-1. `App` renders `<BootSequence onComplete={() => setBooted(true)} />` while `booted === false`.
-2. `BootSequence` internal machine: `firmware → grub → advanced-menu → recovery | boot-log → logo-splash → memtest↔grub` — every screen is a conditional render *inside the same fixed overlay*, so only one screen's timers/listeners exist at any moment.
-3. When `LogoSplash` finishes, it calls `onComplete` → `setBooted(true)` → **the boot overlay is unmounted and `Desktop` mounts**. Beginner-friendly takeaway: this is a *conditional render*, not a " page navigation" — the desktop has no code dependency on the boot screen, and no boot listener can survive into the desktop because the component that owned them is gone.
-
-All branches converge: recovery → boot-log → logo-splash → desktop; memtest → GRUB; submenu → boot-log | recovery | GRUB. (Verified in `BootSequence.tsx` `onSelect`/`onContinue`/`onExit` wiring.)
+Still the same verified mechanism in `App.tsx`: `booted` boolean + conditional render. Recovery continues through `boot-log → logo-splash → desktop`; memtest returns to GRUB; all paths converge (verified in `BootSequence.tsx` wiring).
 
 ---
 
-## 4. Is the GRUB menu implemented, partial, or missing? ✅ — **fully implemented (as visual simulation)**
+## 4. Is the GRUB menu implemented, partial, or missing? ✅ — **fully implemented and now committed**
 
-Verified by reading `GrubMenu.tsx`, `GrubSubmenu.tsx`, `BootSequence.tsx`:
-
-- GNU GRUB 2.06 header, box-drawing menu with 3 entries, 15-second countdown with visible countdown text (matches the real GRUB line).
-- ↑/↓ move selection (and **reset the countdown**, as in real GRUB), Enter boots the highlighted entry, Escape pauses/resumes automatic boot, mouse click boots an entry directly.
-- Mouse hover pauses the countdown, leaving resumes it — matches the "fair chance to choose" requirement.
-- Timer/listener cleanup: the countdown is one `setTimeout` chain cleared on every unmount; the key listener is added/removed in one effect that depends on the handlers it closes over.
-- Submenu (`GrubSubmenu.tsx`) has the recovery-mode entry and "Return to main menu", keyboard + mouse + Escape work the same way, no countdown (as real GRUB's advanced menu).
-- Memtest sim is bounded (9 s total, auto-return) and has Escape + button exit. Recovery sim has Enter = continue, Escape = back, plus buttons.
-
-⚠️ What is **not** verified by this audit: nobody has driven a real browser with a keyboard and watched the countdown/keys fire (see §7.3). Everything above is *static code analysis*, not runtime proof.
+- Interactive menu + 15 s countdown + ↑/↓/Enter/Escape/mouse + hover-pause + reset-on-move — verified in the current `GrubMenu.tsx`.
+- Submenu (normal / recovery / return-to-main) verified in `GrubSubmenu.tsx`; recovery and memtest branches verified; memtest is bounded with Escape + button exit.
+- ✅ **Now in git history** (`c667dd2`), resolving audit v1's storage risk.
+- ⚠️ Still true: no automated test drives these flows; runtime behavior is verified by code reading and one HTTP smoke test only, not by running the app with a keyboard.
 
 ---
 
-## 5. Is the logo asset correctly referenced and displayed? ✅ / with one styling caveat
+## 5. Is the logo asset correctly referenced and displayed? ✅
 
-- **Asset exists** ✅: `src/assets/Neon Dragon Linux Tech Wallpaper.png` is present (directory listing verified). Other assets in the same folder: `hero.png`, `react.svg`, `vite.svg`.
-- **Referenced twice** ✅ (verified by code search):
-  1. `Desktop.tsx` line 19 imports it and uses it as the wallpaper fallback image (line 90).
-  2. `LogoSplash.tsx` imports it and shows it as the centered splash `<img>`, **and** masks the light-sweep effect with the same image.
-- **Seeing it**: the analyst did not run a browser screenshot, so "it looks right on screen" is 🤔 an *assumption*; but the import path is correct relative to `src/components/`, and Vite emits the asset into the build — verified: `dist/assets/Neon Dragon Linux Tech Wallpaper-…png` exists in the build output (build run in §7).
-- ⚠️ Caveat carried to §8: the splash's fancy styling classes (`lsplash-*`, glow, vignette, progress track) live **nowhere in any CSS file**, so right now the logo renders but without the intended animation/framing (see the exact finding below).
+- `src/assets/Neon Dragon Linux Tech Wallpaper.png` exists ✅, is used by **both** `Desktop.tsx` (wallpaper layer) and `LogoSplash.tsx` (centerpiece `<img>` + sweep mask) ✅.
+- The splash also pulls its own dedicated stylesheet now (`import "../LogoSplash.css"`, verified in the file's import line), and the class-coverage gap from audit v1 is **closed**: every `lsplash-*` class referenced in the JSX is defined in `LogoSplash.css` (verified by extracting and diffing both class lists — empty diff).
+- 🤔 On-screen appearance is still analysis, not a screenshot.
+- ✅ A **new, unreferenced** asset exists: `src/assets/Neon Linux User Emblem.png` (no code mention anywhere) — likely intended for a future use or a leftover upload.
 
 ---
 
-## 6. Placeholder images and incomplete functionality ✅ (each item verified unless noted)
+## 6. Placeholder images and incomplete functionality ✅
 
-| Finding | File | Verified? |
-|---|---|---|
-| Project images exist as real files: `public/projects/event-platform.webp`, `delivery-app.webp`, `book-store.webp` | `public/projects/` | ✅ directory listing |
-| 🤔 Whether those three images actually depict the projects is an assumption — the fallback letter tile exists if any fail to load | `FileManager.tsx` (`ProjectThumb`) | analysis |
-| **Trash icon does nothing** — it has `onSelect={...}` but no `onOpen`, so double-click is a no-op | `Desktop.tsx` (Trash `DesktopIcon`) | ✅ |
-| Files in the file manager can't be opened — `openEntry` early-returns for `kind !== 'folder'`, so `readme.txt` (listed) has no reader | `FileManager.tsx` (`openEntry`) | ✅ |
-| **FileManager has no minimize button** — Desktop never passes `onMinimize` to it, so only Terminal and About windows are minimizable (real inconsistency users can feel) | `Desktop.tsx` windows map vs. `FileManager.tsx` props | ✅ |
-| About-window links are placeholders: `github.com`, `linkedin.com`, `mailto:kali@portfolio.dev` (generic, not the owner's real profiles) | `Desktop.tsx` `ABOUT_LINKS` | ✅ |
-| `App.css` is Vite template leftovers (counter/hero/"next steps" styles) and is **not imported** by any component — dead code | `src/App.css`, `src/App.tsx` (no import) | ✅ |
-| Unused assets: `src/assets/hero.png`, `react.svg`, `vite.svg` have zero references | code search | ✅ |
-| Project data itself (descriptions, stacks, tags, years) appears to be real content the author wrote — 🤔 assumed intentional | `src/data/projects.ts` | analysis |
+- Project images exist (`public/projects/*.webp`) with a fallback letter tile on load failure — unchanged.
+- **Profile links are still placeholders**: `PROFILE_LINKS` points to `https://github.com/`, `https://www.linkedin.com/`, `mailto:kali@portfolio.dev`, and the About window itself says *"Update the profile links in Desktop.tsx with your real accounts before publishing."* (verified).
+- `readme.txt` still can't be opened (`openEntry` ignores non-folder entries in the unmodified `FileManager.tsx`) ✅.
+- 🤔 Desktop icon labels "Browser" and "Resume" both open the same About window — intentional bridging, or incomplete; your call.
+- File windows still get **no** `onMinimize` from Desktop (only Terminal/About do), so Files windows can't be minimized ✅ — now more visible because all other windows can and the new switcher only shows minimized ones.
+- 🤔 Branding mix: boot shows "Kali", desktop says "Oussama OS / oussama@linux" — cosmetic inconsistency, safe to align later.
+- `App.css` Vite-template leftovers: still unreferenced ✅. `hero.png`, `react.svg`, `vite.svg` still unreferenced ✅.
 
 ---
 
 ## 7. Build, lint, and test scripts — **actually run in this audit**
 
-From `package.json` (✅): `dev`, `build` (`tsc -b && vite build`), `lint` (eslint), `preview`. **There is no `test` script and no test framework installed** (✅).
+From `package.json` ✅: `dev`, `build`, `lint`, `preview`; **still no `test` script**.
 
-Results **run during this audit**:
+Run **today, on the current working tree**:
 
 | Command | Result |
 |---|---|
-| `npm run build` | ✅ **passes** — `tsc -b` clean, Vite build succeeds, ✻1.53 s, produces `dist/` (checked exit code 0) |
-| `npm run lint` | ❌ **fails (1 error)** — `react-hooks/set-state-in-effect` at `src/components/LogoSplash.tsx:113` (a `setState` block in the reduced-motion effect). Exactly 1 error, 0 warnings (checked exit code 1) |
-| `vite preview` smoke test (earlier in this workspace, same working tree) | ✅ HTTP 200 for `/`, `<title>Kali Portfolio OS</title>` served |
+| `npm run build` | ✅ **passes** (exit 0, `tsc -b` clean, Vite emits `dist/` in ~2.1 s) |
+| `npm run lint` | ✅ **passes** (exit 0 — the LogoSplash `set-state-in-effect` error from audit v1 is gone) |
+| `vite preview` (this workspace, current tree) | ✅ served HTTP 200 |
 
-Not possible ✅/❌ distinction: **no automated tests exist**, so behavior (countdown, keys, transitions) cannot be proven by a test runner — only by reading the code (done, §4) or manually operating the app in a browser (not done).
+No automated tests exist, so keyboard/countdown flows remain provable only by code analysis (done in §4) — not by a test runner.
 
 ---
 
 ## 8. Potential problems with state, timers, listeners, cleanup, navigation
 
-Beginner note: in React, the two classic bug classes in this kind of app are (a) timers/listeners that keep running after a screen is gone — "leaks" — and (b) handlers that read old state. Findings:
-
-1. **`LogoSplash` styling classes don't exist** ✅ *verified*. The file on disk (`LogoSplash.tsx`) uses ~18 CSS class names (`lsplash-root`, `lsplash-vignette`, `lsplash-logo`, `lsplash-progress`, `lsplash-fill`, `lsplash-hint`, …). A full search over the repo found them **only inside LogoSplash.tsx** — `src/index.css` defines entirely different `.splash-*` classes. Tailwind does not error on unknown classes, so the build stays green, but the splash currently renders as roughly unstyled content (logo + raw percentage, no glow/vignette/track/exit-fade). This is the highest-impact finding of the audit.
-2. **Lint blocks on LogoSplash** ✅ (see §7): `setState` called directly in an effect body (line 113). It's the reduced-motion fast path; it works, but the project's own eslint rule forbids the pattern, so CI/lint will stay red until it's restructured (e.g., deriving the values during render). No other file violates it.
-3. **Timer/listener hygiene is otherwise good** ✅ by code reading: every boot stage stores its timers in a `useRef<number[]>` and clears them in the effect's cleanup; every stage's keydown listener is removed on unmount; `Desktop`'s clock interval is cleared; `MemoryTestScreen` stops its interval at 100% and auto-returns. 🤔 Since the boot screens are conditionally rendered (never co-mounted), "countdown running in background after leaving a menu" is structurally prevented — but this is analysis, not a runtime assertion.
-4. **Global key listeners fire per-stage, not app-wide** ✅ — e.g., `GrubMenu`'s window keydown handler is removed when GRUB unmounts; the desktop mounting later has no inherited listeners. Key events cannot "fall through" to the desktop because the desktop doesn't exist yet. ✅
-5. **StrictMode double-invocation** 🤔: `main.tsx` wraps `App` in `<StrictMode>`, so in dev every effect mounts → unmounts → mounts once. All timers restart cleanly (verified pattern), so behavior should be identical in dev and prod — analysis, untested.
-6. **Window drag has no right/bottom clamping** 🤔: `WindowFrame.handlePointerMove` clamps only with `Math.max(0, …)`; a window can be dragged past the right/bottom edge of the viewport and pulled back only blindly. Analysis, not observed.
-7. **LogoSplash skips on *any* pointerdown/keydown** 🤔 (event listeners added on window). The listener only exists while the splash stage is mounted, so it can't leak — but it does mean a stray click from the previous screen's focus could instantly skip the logo. Analysis.
-8. **Uncommitted work** ✅ (§1.3) — not a defect in code, but the largest practical risk in the repository right now.
+1. ✅ *Resolved:* audit v1's missing `lsplash-*` CSS and its lint error are both gone (verified today).
+2. ✅ Boot-screen hygiene remains good by code reading: timers in refs + effect cleanups, per-stage listeners removed on unmount, conditional-render isolation prevents "countdown running behind the desktop". 🤔 Analysis, not runtime-proven.
+3. 🤔 **WindowFrame drag lacks right/bottom clamping** — unchanged from v1.
+4. 🤔 **LogoSplash skips on any key/pointerdown** — listener only exists while the splash is mounted (no leak), but a stray click can instantly skip the reveal.
+5. 🤔 **Splash identity + timing** — the splash now shows a "OUSSAMA / FULL STACK DEVELOPER" identity reveal 🤔 (content choice is yours; it's hard-coded in `LogoSplash.tsx`).
+6. 🤔 **StrictMode double-mount** — dev-only double effect runs; all current timers restart cleanly by pattern (analysis).
+7. ✅ **Untracked new files** (`LogoSplash.css`, emblem PNG) + modified `Desktop.tsx`/`LogoSplash.tsx` are uncommitted — same practical risk as v1, now smaller but real.
 
 ---
 
 ## Prioritized next tasks (with dependencies)
 
-Order matters: the first two unblock everything else.
-
-| # | Task | Why it's here | Depends on |
+| # | Task | Why | Depends on |
 |---|---|---|---|
-| 1 | **Commit the current boot work** (all untracked boot files + modified `App.tsx`/`index.css`/deleted `BootScreen.tsx`) | Working tree is the only copy of the new feature | — |
-| 2 | **Fix the `LogoSplash` lint error** (line 113 setState-in-effect) and **reconcile its CSS** — either port the missing `lsplash-*` styles into `index.css` or switch the component back to the existing `.splash-*` classes | Restores red lint to green and the intended splash visuals; blocks any clean release | — |
-| 3 | **Add automated tests** (e.g. Vitest + React Testing Library; package.json has no `test` script today). Cover: 15 s countdown auto-boot, ↑/↓/Enter/Escape/mouse in GRUB + submenu, recovery continue/return, memtest exit, all paths ending at desktop | Only way to *prove* the flows repeatedly instead of trusting code reading | #2 (lint clean) |
-| 4 | **Manual browser walkthrough** (or Playwright run against `vite preview`) of every path in §4 | Confirms what code analysis assumed | #2 |
-| 5 | Small UX defects: pass `onMinimize` to `FileManager`; give Trash a no-op or "empty trash" behavior; open `readme.txt`; replace `ABOUT_LINKS` placeholders | Low effort, user-visible polish | — |
-| 6 | Cleanup: delete unused `hero.png`/`react.svg`/`vite.svg` and dead `App.css`, or repurpose them | Reduces confusion for future maintainers | #1 (so deletion is traceable) |
+| 1 | **Commit the current working tree** (desktop rewrite, splash rewrite, `LogoSplash.css`) | Protects the newest work — it currently exists only on disk | — |
+| 2 | **Add automated tests** (Vitest + React Testing Library): GRUB countdown, ↑/↓/Enter/Escape/mouse, submenu, recovery, memtest exit, boot→desktop transition; add a `test` script | The only way to *prove* flows instead of assuming; protects future rewrites (the splash alone changed shape 3 times during this engagement) | #1 |
+| 3 | **Replace placeholder content**: real profile links in `PROFILE_LINKS`; real `mailto:`; decide on the `readme.txt` reader; give Files windows `onMinimize`; align Kali/Oussama branding (or intentionally keep the "Kali theme, Oussama identity" mix) | User-visible polish, cheap | — |
+| 4 | **Manual browser walkthrough** (or Playwright against `vite preview`) of all GRUB paths | Confirms assumptions from §4/§8 | #1 (better: #2) |
+| 5 | Small hygiene: clamp window drag to the viewport; use or delete the unused `Neon Linux User Emblem.png`; remove dead `App.css`/`hero.png`/`react.svg`/`vite.svg` | Reduces future confusion | #1 |
 
 ---
 
 ## Short report
 
 **Completed** (verified)
-- Full architecture: entry chain, boot state machine, desktop, working window manager, file manager, simulated terminal, project data (§1–3, §7).
-- GRUB 2.06-style menu with countdown/keyboard/mouse/pause/reset, submenu, recovery console, bounded memtest (§4).
-- Logo asset identified and referenced in both the desktop wallpaper and the splash (§5).
-- `npm run build` passes; `vite preview` serves the app (§7).
+- Committed GRUB boot feature end-to-end (firmware → menu → submenu → recovery/memtest → logo splash → desktop), now safely in history.
+- New "Oussama OS" desktop rewrite integrated cleanly with the existing window manager, file manager, and terminal; Escape/search/dock/switcher all wired.
+- White-screen incident diagnosed (`Github` icon missing from `lucide-react`) and fixed via `Link2 as Github`; **`npm run build`, `npm run lint` both exit 0 today, preview serves HTTP 200**.
+- Splash stylesheet now exists and is 100 % class-complete with the component; lint-clean after the reduced-motion restructure.
 
 **Incomplete**
-- No automated tests and no `test` script (§7).
-- The splash's intended styling/animation (glow, vignette, progress track, exit fade) is not present in any CSS file (§8.1).
-- Trash, `readme.txt` opening, file-manager minimize, real About links (§6).
+- No tests / no `test` script; GRUB flows unproven at runtime.
+- Placeholder profile links, unopenable `readme.txt`, non-minimizable Files windows.
+- Browser/Resume icons alias to About; Kali vs. Oussama branding mix.
 
 **Problems**
-1. `npm run lint` fails: 1 error, `react-hooks/set-state-in-effect` at `LogoSplash.tsx:113` (§7, §8.2).
-2. `LogoSplash` uses ~18 `lsplash-*` classes that exist in no stylesheet — splash renders unstyled (§8.1).
-3. All boot-sequence work is uncommitted; `BootScreen.tsx` deletion and 7 new components are at risk before a commit (§1.3).
-4. Minor: window drag lacks right/bottom clamping; splash can be skipped by a stray click (§8.6, §8.7).
+1. Newest work (desktop + splash rewrite + `LogoSplash.css` + emblem asset) is uncommitted — repeat of the v1 storage risk, smaller but real.
+2. Window drag can go past the screen edge (only top/left clamped).
+3. Stray click/key instantly skips the splash reveal.
+4. Cosmetic: boot says "Kali", desktop says "Oussama"; system monitor numbers are static (fine, but worth remembering it's decorative).
 
 **Recommended Next Task**
-**Task 1: commit the working tree, then repair `LogoSplash`** — restore the missing `lsplash-*` styles (or adapt the component to the `.splash-*` styles already in `index.css`) and restructure the line-113 effect until `npm run lint` and `npm run build` are both green. Every later task (tests, walkthrough, UX fixes) builds on a clean, committed baseline.
+**Commit the working tree, then add automated boot-flow tests** (make `npm test` real with Vitest + Testing Library). That locks in the current green state and finally converts the GRUB/branch behavior from "verified by reading" to "verified by execution" — after that, the placeholder-content pass (#3) is the highest user-facing value.
