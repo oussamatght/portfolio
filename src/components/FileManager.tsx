@@ -1,5 +1,12 @@
-import { useState } from 'react'
-import type { ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { createPortal } from 'react-dom'
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import {
   ChevronRight,
   Download,
@@ -20,8 +27,18 @@ import {
 import WindowFrame from './WindowFrame'
 import { featuredProjects, projects, type Project } from '../data/projects'
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
+import {
+  FM_ROOT_ID,
+  buildFmNodes,
+  fmPathChain,
+  isValidFmDrop,
+  listFmChildren,
+  loadFmMoves,
+  saveFmMoves,
+  type FmNode,
+} from '../lib/fmFs'
 
-type Location = 'home' | 'projects' | 'featured' | 'project'
+type Location = 'home' | 'projects' | 'featured' | 'project' | 'folder'
 
 type FileManagerProps = {
   onClose: () => void
@@ -38,23 +55,24 @@ type Entry = {
   meta?: string
   target?: Location
   projectId?: string
+  /** FM-tree node id; present only for entries that live in the real tree. */
+  nodeId?: string
 }
 
-type ProjectLinkEntry = {
-  label: string
-  url: string
-  icon: ReactNode
+type DragState = {
+  pointerId: number
+  nodeId: string
+  name: string
+  kind: 'folder' | 'file'
+  startX: number
+  startY: number
+  x: number
+  y: number
+  active: boolean
 }
 
-const HOME_ENTRIES: Entry[] = [
-  { name: 'Projects', kind: 'folder', target: 'projects' },
-  { name: 'Featured', kind: 'folder', target: 'featured' },
-  { name: 'Desktop', kind: 'folder' },
-  { name: 'Documents', kind: 'folder' },
-  { name: 'Downloads', kind: 'folder' },
-  { name: 'Pictures', kind: 'folder' },
-  { name: 'readme.txt', kind: 'file', size: '1 KB' },
-]
+const DRAG_THRESHOLD = 7
+const DROP_ATTR = 'data-fm-drop'
 
 function MediaThumb({
   src,
@@ -136,6 +154,12 @@ function MediaThumb({
   )
 }
 
+type ProjectLinkEntry = {
+  label: string
+  url: string
+  icon: ReactNode
+}
+
 function projectLinkEntries(project: Project): ProjectLinkEntry[] {
   if (!project.links) return []
 
@@ -200,11 +224,149 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
   const [activeProjectId, setActiveProjectId] = useState<string | null>(initial?.id ?? null)
   const [selected, setSelected] = useState<string | null>(initial?.id ?? null)
   const [query, setQuery] = useState('')
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [moves, setMoves] = useState<Record<string, string>>(() => loadFmMoves())
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const [hover, setHover] = useState<{ id: string; valid: boolean } | null>(null)
+
+  const nodes = useMemo(() => buildFmNodes(moves), [moves])
+  const nodesRef = useRef(nodes)
+  const dragRef = useRef<DragState | null>(null)
+  const hoverRef = useRef<{ id: string; valid: boolean } | null>(null)
+  const suppressClickRef = useRef(false)
+
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
+  useEffect(() => {
+    hoverRef.current = hover
+  }, [hover])
+
+  const applyMove = useCallback((nodeId: string, targetId: string) => {
+    setMoves((previous) => {
+      if (previous[nodeId] === targetId) return previous
+      const next = { ...previous, [nodeId]: targetId }
+      saveFmMoves(next)
+      return next
+    })
+  }, [])
+
+  // Global pointer bookkeeping for drag & drop (mouse + touch).
+  useEffect(() => {
+    const hitTest = (x: number, y: number) => {
+      const element = document.elementFromPoint(x, y) as HTMLElement | null
+      const dropHost = element?.closest(`[${DROP_ATTR}]`) as HTMLElement | null
+      if (!dropHost || !dragRef.current) {
+        setHover(null)
+        return
+      }
+      const targetId = dropHost.getAttribute(DROP_ATTR) ?? ''
+      const valid = isValidFmDrop(nodesRef.current, dragRef.current.nodeId, targetId)
+      setHover((previous) =>
+        previous?.id === targetId && previous.valid === valid
+          ? previous
+          : { id: targetId, valid },
+      )
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      const state = dragRef.current
+      if (!state || state.pointerId !== event.pointerId) return
+
+      if (!state.active) {
+        const distance = Math.hypot(
+          event.clientX - state.startX,
+          event.clientY - state.startY,
+        )
+        if (distance < DRAG_THRESHOLD) return
+        state.active = true
+      }
+
+      state.x = event.clientX
+      state.y = event.clientY
+      setDrag({ ...state })
+      hitTest(event.clientX, event.clientY)
+      if (event.cancelable) event.preventDefault()
+    }
+
+    const endDrag = (event: PointerEvent, committed: boolean) => {
+      const state = dragRef.current
+      if (!state) return
+      const wasActive = state.active
+
+      if (
+        committed &&
+        wasActive &&
+        event.type === 'pointerup' &&
+        hoverRef.current?.valid
+      ) {
+        applyMove(state.nodeId, hoverRef.current.id)
+      }
+      if (wasActive) suppressClickRef.current = true
+
+      dragRef.current = null
+      setDrag(null)
+      setHover(null)
+    }
+
+    const onPointerUp = (event: PointerEvent) => endDrag(event, true)
+    const onPointerCancel = (event: PointerEvent) => endDrag(event, false)
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !dragRef.current) return
+      dragRef.current = null
+      setDrag(null)
+      setHover(null)
+    }
+
+    window.addEventListener('pointermove', onPointerMove, { passive: false })
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerCancel)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerCancel)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [applyMove])
+
+  const startTileDrag = useCallback(
+    (entry: Entry, event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (!entry.nodeId || entry.target || entry.projectId) return
+      if (event.pointerType === 'mouse' && event.button !== 0) return
+      if (!event.isPrimary) return
+
+      suppressClickRef.current = false
+      dragRef.current = {
+        pointerId: event.pointerId,
+        nodeId: entry.nodeId,
+        name: entry.name,
+        kind: entry.kind,
+        startX: event.clientX,
+        startY: event.clientY,
+        x: event.clientX,
+        y: event.clientY,
+        active: false,
+      }
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // Some browsers refuse capture; window listeners still cover it.
+      }
+    },
+    [],
+  )
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null
   const selectedProject = projects.find((project) => project.id === selected) ?? null
   const selectedGallery = selectedProject?.gallery && selectedProject.gallery.length > 1 ? selectedProject.gallery : null
   const selectedLinks = selectedProject ? projectLinkEntries(selectedProject) : []
+
+  const folderChain =
+    location === 'folder' && currentFolderId
+      ? fmPathChain(nodes, currentFolderId)
+      : null
 
   const path =
     location === 'home'
@@ -213,11 +375,26 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
         ? '/home/kali/featured'
         : location === 'projects'
           ? '/home/kali/projects'
-          : (activeProject?.path ?? '/home/kali')
+          : folderChain
+            ? `/home/kali/${folderChain.join('/')}`
+            : (activeProject?.path ?? '/home/kali')
+
+  const entriesFromNodes = useCallback(
+    (parentId: string): Entry[] =>
+      listFmChildren(nodes, parentId).map((node: FmNode) => ({
+        name: node.name,
+        kind: node.kind,
+        meta: node.meta,
+        nodeId: node.id,
+        target: node.target,
+        projectId: node.projectId,
+      })),
+    [nodes],
+  )
 
   const entries: Entry[] =
     location === 'home'
-      ? HOME_ENTRIES
+      ? entriesFromNodes(FM_ROOT_ID)
       : location === 'featured'
         ? featuredProjects().map((project) => ({
             name: project.name,
@@ -232,7 +409,9 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
               projectId: project.id,
               meta: project.year,
             }))
-          : (activeProject?.files ?? []).map((file) => ({ ...file }))
+          : location === 'folder' && currentFolderId
+            ? entriesFromNodes(currentFolderId)
+            : (activeProject?.files ?? []).map((file) => ({ ...file }))
 
   const visibleEntries = entries.filter((entry) =>
     entry.name.toLowerCase().includes(query.trim().toLowerCase()),
@@ -249,12 +428,27 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
       setLocation('project')
       setActiveProjectId(entry.projectId)
       setSelected(entry.projectId)
+      return
+    }
+    if (entry.nodeId) {
+      setLocation('folder')
+      setCurrentFolderId(entry.nodeId)
+      setSelected(null)
     }
   }
 
   const goUp = () => {
     if (location === 'project') {
       setLocation('projects')
+      setSelected(null)
+    } else if (location === 'folder' && currentFolderId) {
+      const parentId = nodes.get(currentFolderId)?.parentId ?? FM_ROOT_ID
+      if (parentId === FM_ROOT_ID) {
+        setLocation('home')
+        setCurrentFolderId(null)
+      } else {
+        setCurrentFolderId(parentId)
+      }
       setSelected(null)
     } else if (location === 'featured') {
       setLocation('home')
@@ -264,6 +458,12 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
       setSelected(null)
     }
   }
+
+  // Inside a real folder, "../" doubles as the drop target for the parent.
+  const parentDropId =
+    location === 'folder' && currentFolderId
+      ? (nodes.get(currentFolderId)?.parentId ?? FM_ROOT_ID)
+      : null
 
   return (
     <WindowFrame
@@ -283,7 +483,12 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
             type="button"
             onClick={goUp}
             aria-label="Go up"
-            className="rounded-md border border-cyan-300/20 px-2 py-1 font-mono text-xs text-cyan-200/80 transition hover:bg-cyan-400/10 hover:text-cyan-100"
+            data-fm-drop={parentDropId ?? undefined}
+            className={`rounded-md border px-2 py-1 font-mono text-xs transition ${
+              drag?.active && hover?.id === parentDropId && hover.valid
+                ? 'border-cyan-300/80 bg-cyan-400/25 text-cyan-50 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
+                : 'border-cyan-300/20 text-cyan-200/80 hover:bg-cyan-400/10 hover:text-cyan-100'
+            }`}
           >
             ../
           </button>
@@ -346,21 +551,49 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
               <ul className="grid grid-cols-2 gap-2 @min-[420px]:grid-cols-3 @min-[480px]:grid-cols-4">
                 {visibleEntries.map((entry) => {
                   const isFolder = entry.kind === 'folder'
-                  const isActive = selected === entry.name || selected === entry.projectId
+                  const entryKey = entry.nodeId ?? entry.projectId ?? entry.name
+                  const isActive = selected === entryKey
+                  const isRealNode = Boolean(
+                    entry.nodeId && !entry.target && !entry.projectId,
+                  )
+                  const isDropTarget =
+                    Boolean(drag?.active) &&
+                    hover?.id === entry.nodeId
+                  const isDragSource =
+                    Boolean(drag?.active) && drag?.nodeId === entry.nodeId
+                  const tileClass = isActive
+                    ? 'border-cyan-300/50 bg-cyan-400/15'
+                    : 'border-transparent hover:border-cyan-300/25 hover:bg-white/5'
+                  const dropClass = !isDropTarget
+                    ? ''
+                    : hover?.valid
+                      ? 'border-cyan-300/80! bg-cyan-400/25! shadow-[0_0_18px_rgba(34,211,238,0.4)]'
+                      : 'border-rose-400/70! bg-rose-400/10!'
+                  const sourceClass = isDragSource ? 'opacity-35' : ''
+                  const pointerClass = isRealNode
+                    ? isDragSource
+                      ? 'cursor-grabbing select-none touch-none'
+                      : 'cursor-grab select-none touch-none'
+                    : ''
                   return (
-                    <li key={entry.name}>
+                    <li key={entryKey}>
                       <button
                         type="button"
+                        data-fm-drop={
+                          isRealNode && isFolder ? entry.nodeId : undefined
+                        }
+                        onPointerDown={(event) => {
+                          startTileDrag(entry, event)
+                        }}
                         onClick={(event) => {
-                          setSelected(entry.projectId ?? entry.name)
+                          if (suppressClickRef.current) return
+                          setSelected(entryKey)
                           if (isCoarsePointer || event.detail === 0) openEntry(entry)
                         }}
                         onDoubleClick={() => openEntry(entry)}
                         className={`flex w-full flex-col items-center gap-2 rounded-lg border p-3 transition ${
-                          isActive
-                            ? 'border-cyan-300/50 bg-cyan-400/15'
-                            : 'border-transparent hover:border-cyan-300/25 hover:bg-white/5'
-                        }`}
+                          tileClass
+                        } ${dropClass} ${sourceClass} ${pointerClass}`}
                       >
                         {isFolder ? (
                           <FolderOpen size={30} className="text-cyan-300" />
@@ -508,6 +741,26 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
             </aside>
           )}
         </div>
+
+        {drag?.active &&
+          createPortal(
+            <div
+              style={{
+                left: drag.x,
+                top: drag.y,
+                transform: 'translate(-50%, -130%) rotate(-2deg)',
+              }}
+              className="pointer-events-none fixed z-[9999] flex items-center gap-1.5 rounded-md border border-cyan-300/60 bg-[#050913]/90 px-2.5 py-1.5 font-mono text-[11px] text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.4)] backdrop-blur-sm"
+            >
+              {drag.kind === 'folder' ? (
+                <FolderOpen size={13} className="text-cyan-300" />
+              ) : (
+                <FileText size={13} className="text-cyan-200/80" />
+              )}
+              <span className="max-w-44 truncate">{drag.name}</span>
+            </div>,
+            document.body,
+          )}
       </div>
     </WindowFrame>
   )
