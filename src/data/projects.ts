@@ -29,6 +29,9 @@ export type Project = {
   stack: string[]
   tags: string[]
   image: string
+  /** Optional screenshot gallery (image is the primary shot). */
+  gallery?: string[]
+  galleryLabels?: string[]
   accent: string
   files: ProjectFile[]
   /** Optional extras — existing UI keeps working without them. */
@@ -43,6 +46,23 @@ export type Project = {
 }
 
 const GH = 'https://github.com/oussamatght'
+
+import aiagentImg from '../assets/projects/aiagent.jpg'
+import choufImg from '../assets/projects/chouf-price-dz.jpg'
+import chouf2Img from '../assets/projects/chouf-price-dz-2.jpg'
+import codeSoulsImg from '../assets/projects/code-souls.jpg'
+import gdgImg from '../assets/projects/gdg.jpg'
+import n8nImg from '../assets/projects/n8n-automations.jpg'
+import nextlevelImg from '../assets/projects/nextlevel.jpg'
+import praytimesImg from '../assets/projects/praytimes.jpg'
+import sakinahAppImg from '../assets/projects/sakinhaapp.jpg'
+import slidesCssImg from '../assets/projects/slides-css.jpg'
+import slidesHtmlImg from '../assets/projects/slides-html.jpg'
+import slidesInternetImg from '../assets/projects/slides-internet.jpg'
+import slidesJsImg from '../assets/projects/slides-javascript.jpg'
+import slidesReactImg from '../assets/projects/slides-react.jpg'
+import wassla2Img from '../assets/projects/wassla-2.jpg'
+import wasslaAppImg from '../assets/projects/wasslaapp.jpg'
 
 const folder = (name: string): ProjectFile => ({ name, kind: 'folder' })
 const file = (name: string): ProjectFile => ({ name, kind: 'file' })
@@ -59,7 +79,8 @@ export const projects: Project[] = [
     year: '2026',
     stack: ['React Native', 'Expo', 'Node.js', 'Express.js', 'MongoDB', 'Socket.io', 'Firebase', 'Cloudinary'],
     tags: ['mobile', 'fullstack', 'realtime', 'payments', 'production'],
-    image: '/projects/wassla.webp',
+    image: wasslaAppImg,
+    gallery: [wasslaAppImg, wassla2Img],
     accent: '#22d3ee',
     featured: true,
     badge: 'Live on Google Play & App Store',
@@ -72,8 +93,8 @@ export const projects: Project[] = [
     ],
     privateRepo: true,
     links: {
-      playStore: '', // TODO: paste your Google Play link
-      appStore: '', // TODO: paste your App Store link
+      playStore: 'https://play.google.com/store/apps/details?id=com.wassla.dz.app',
+      appStore: 'https://apps.apple.com/us/app/wassla-app/id6782409544',
     },
     files: [
       folder('app'),
@@ -104,7 +125,7 @@ export const projects: Project[] = [
     year: '2026',
     stack: ['Next.js', 'TypeScript', 'React', 'Tailwind CSS', 'Zustand', 'TanStack Query', 'Socket.io', 'Zod'],
     tags: ['web', 'dashboard', 'realtime', 'fullstack'],
-    image: '/projects/web-admin-wassel.webp',
+    image: '/src/assets/projects/wassla-2.jpg',
     accent: '#60a5fa',
     featured: true,
     links: { github: `${GH}/web-admin-wassel` },
@@ -128,13 +149,17 @@ export const projects: Project[] = [
     year: '2025',
     stack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'MongoDB', 'Render'],
     tags: ['ai', 'fullstack', 'chat', 'automation'],
-    image: '/projects/oussama-ai-agent.webp',
+    image: aiagentImg,
     accent: '#a78bfa',
     featured: true,
     highlights: ['Interactive chat with history', 'Smart routing', 'API automation', 'Clean, scalable architecture'],
     links: {
       github: `${GH}/oussama-ai-agent-frontend`,
+      backend: `${GH}/oussama-ai-agent-backend`,
       live: 'https://oussama-ai-agent.onrender.com/',
+      extra: [
+        { label: 'Live API (backend)', url: 'https://oussama-ai-agent-backend.vercel.app' },
+      ],
     },
     files: [
       folder('app'),
@@ -156,13 +181,14 @@ export const projects: Project[] = [
     year: '2025',
     stack: ['Next.js', 'TypeScript', 'React', 'Tailwind CSS', 'JWT', 'REST APIs', 'Vercel'],
     tags: ['education', 'gamification', 'multiplayer', 'fullstack', 'hackathon'],
-    image: '/projects/code-souls.webp',
+    image: codeSoulsImg,
     accent: '#facc15',
     featured: true,
     badge: '🥇 1st Place — GDG Hackathon',
     highlights: ['Progression & unlockable stages', 'Boss battles', 'Multiplayer', 'In-game store', 'JWT authentication'],
     links: {
       github: `${GH}/Code-Souls-FRONTEND-`,
+      backend: `${GH}/Code-Souls-BACKEND`,
       live: 'https://code-souls-frontend-dmhx.vercel.app/',
     },
     files: [
@@ -190,7 +216,8 @@ export const projects: Project[] = [
     year: '2025',
     stack: ['Next.js 16', 'TypeScript', 'Tailwind CSS', 'Leaflet', 'shadcn/ui', 'Radix UI', 'React Hook Form', 'Zod', 'JWT'],
     tags: ['fullstack', 'maps', 'community', 'dashboard', 'realtime'],
-    image: '/projects/chouf-price-dz.webp',
+    image: choufImg,
+    gallery: [choufImg, chouf2Img],
     accent: '#34d399',
     featured: true,
     highlights: [
@@ -204,6 +231,7 @@ export const projects: Project[] = [
     links: {
       github: `${GH}/ChoufPrice-DZ-Platform`,
       live: 'https://chouf-price-dz-platform-kg67.vercel.app/',
+      backend: 'https://github.com/oussamatght/ChoufPrice-DZ-Platform-backend',
     },
     files: [
       folder('app'),
@@ -232,7 +260,7 @@ export const projects: Project[] = [
     year: '2025',
     stack: ['Next.js 14', 'React 18', 'TypeScript', 'Tailwind CSS', 'shadcn/ui', 'Crew AI', 'Axios', 'Vercel'],
     tags: ['fullstack', 'community', 'ai', 'events', 'competition'],
-    image: '/projects/gcl-hub.webp',
+    image: gdgImg,
     accent: '#f97316',
     featured: true,
     badge: '🏆 Best Development Team — GDG Competition',
@@ -276,7 +304,7 @@ export const projects: Project[] = [
       'EAS Build',
     ],
     tags: ['mobile', 'offline-first', 'rtl', 'open-source'],
-    image: '/projects/sakinah.webp',
+    image: sakinahAppImg,
     accent: '#2dd4bf',
     featured: true,
     highlights: [
@@ -303,7 +331,7 @@ export const projects: Project[] = [
     year: '2026',
     stack: ['React', 'TypeScript', 'TanStack Start', 'TanStack Router', 'Vite', 'Nitro', 'Vercel'],
     tags: ['web', 'rtl', 'landing', 'open-source'],
-    image: '/projects/sakinah-web.webp',
+    image: '/src/assets/projects/sakinha.png',
     accent: '#38bdf8',
     featured: true,
     highlights: ['APK download + QR install flow', 'Full RTL support', 'Premium responsive UI/UX'],
@@ -335,11 +363,12 @@ export const projects: Project[] = [
     year: '2025',
     stack: ['Next.js', 'Strapi', 'Stripe', 'Clerk', 'Tailwind CSS', 'Cloudinary', 'Render'],
     tags: ['ecommerce', 'fullstack', 'payments', 'cms'],
-    image: '/projects/nextlevel.webp',
+    image: nextlevelImg,
     accent: '#f472b6',
     highlights: ['Cart (guest + authenticated)', 'Stripe checkout', 'Order history', 'Strapi admin panel'],
     links: {
       github: `${GH}/nextlevel`,
+      backend: `${GH}/nextlevel-backend`,
       live: 'https://nextlevel-3-1v3a.onrender.com/',
     },
     files: [
@@ -362,7 +391,9 @@ export const projects: Project[] = [
     year: '2026',
     stack: ['HTML', 'CSS', 'JavaScript', 'React', 'Git', 'SVG'],
     tags: ['education', 'workshops', 'open-source'],
-    image: '/projects/web-dev-slides.webp',
+    image: slidesHtmlImg,
+    gallery: [slidesHtmlImg, slidesCssImg, slidesJsImg, slidesReactImg, slidesInternetImg],
+    galleryLabels: ['HTML deck', 'CSS deck', 'JavaScript deck', 'React deck', 'Internet deck'],
     accent: '#c084fc',
     highlights: ['One deployed deck per topic', 'Workshop-ready content', 'Opens directly in the browser'],
     links: {
@@ -397,7 +428,7 @@ export const projects: Project[] = [
     year: '2026',
     stack: ['n8n', 'AI Agents', 'RAG', 'REST APIs', 'Databases'],
     tags: ['automation', 'ai', 'devops'],
-    image: '/projects/n8n-automations.webp',
+    image: n8nImg,
     accent: '#fb7185',
     links: { github: `${GH}/n8n-automations` },
     files: [file('README.md')],
@@ -409,10 +440,10 @@ export const projects: Project[] = [
     tagline: 'Prayer times for all Algerian cities',
     description:
       'Bilingual (Arabic / English) responsive web app with live clock, next-prayer countdown, city selector, dark/light themes and a glassmorphism design, powered by the Aladhan API.',
-    year: '2025',
+    year: '2024',
     stack: ['HTML', 'CSS', 'JavaScript', 'Axios', 'Aladhan API'],
     tags: ['web', 'rtl', 'api'],
-    image: '/projects/praytimes.webp',
+    image: praytimesImg,
     accent: '#fbbf24',
     links: {
       github: `${GH}/praytimes`,
@@ -435,10 +466,10 @@ export const projects: Project[] = [
     tagline: 'Learn, test and explore Islamic knowledge',
     description:
       'Modern responsive Islamic web platform with an interactive quiz game, educational sections, dark/light theme toggle and saved preferences.',
-    year: '2025',
+    year: '2024', 
     stack: ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'LocalStorage', 'Render'],
     tags: ['web', 'education', 'quiz'],
-    image: '/projects/islam-web.webp',
+    image: '/src/assets/projects/islemweb.png',
     accent: '#4ade80',
     links: {
       github: `${GH}/islam-web`,

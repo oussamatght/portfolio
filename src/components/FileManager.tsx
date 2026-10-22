@@ -56,34 +56,83 @@ const HOME_ENTRIES: Entry[] = [
   { name: 'readme.txt', kind: 'file', size: '1 KB' },
 ]
 
-function ProjectThumb({ project }: { project: Project }) {
+function MediaThumb({
+  src,
+  accent,
+  initial,
+  alt,
+  label,
+  compact = false,
+  baseHeight = 'h-36',
+  portraitHeight = 'h-96',
+  className = '',
+}: {
+  src: string
+  accent: string
+  initial: string
+  alt: string
+  label?: string
+  compact?: boolean
+  baseHeight?: string
+  portraitHeight?: string
+  className?: string
+}) {
   const [failed, setFailed] = useState(false)
-
-  if (failed) {
-    return (
-      <div
-        className="flex h-full w-full items-center justify-center"
-        style={{
-          background: `linear-gradient(135deg, ${project.accent}33, #0b0f16 70%)`,
-        }}
-      >
-        <span
-          className="font-mono text-3xl font-bold"
-          style={{ color: project.accent }}
-        >
-          {project.name.charAt(0)}
-        </span>
-      </div>
-    )
-  }
+  const [loaded, setLoaded] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const [portrait, setPortrait] = useState(false)
 
   return (
-    <img
-      src={project.image}
-      alt={project.name}
-      onError={() => setFailed(true)}
-      className="h-full w-full object-cover"
-    />
+    <div
+      className={`relative overflow-hidden rounded-lg border border-cyan-300/20 ${
+        portrait ? portraitHeight : baseHeight
+      } ${className}`}
+    >
+      {!loaded && !failed && (
+        <div className="absolute inset-0 animate-pulse bg-cyan-300/[.06]" />
+      )}
+      {failed ? (
+        <div
+          className="flex h-full w-full items-center justify-center"
+          style={{
+            background: `linear-gradient(135deg, ${accent}33, #0b0f16 70%)`,
+          }}
+        >
+          <span
+            className={`font-mono font-bold ${compact ? 'text-lg' : 'text-3xl'}`}
+            style={{ color: accent }}
+          >
+            {initial}
+          </span>
+        </div>
+      ) : (
+        <img
+          key={attempt}
+          src={attempt > 0 ? `${src}?r=${attempt}` : src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onLoad={(event) => {
+            const image = event.currentTarget
+            setPortrait(image.naturalHeight > image.naturalWidth)
+            setLoaded(true)
+          }}
+          onError={() => {
+            if (attempt < 2) {
+              window.setTimeout(() => setAttempt((current) => current + 1), 300)
+            } else {
+              setFailed(true)
+            }
+          }}
+          className={`h-full w-full ${portrait ? 'object-contain' : 'object-cover object-top'}`}
+        />
+      )}
+      {label && (
+        <span className="absolute bottom-1 left-1 rounded bg-[#050913]/80 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-cyan-100">
+          {label}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -154,6 +203,7 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null
   const selectedProject = projects.find((project) => project.id === selected) ?? null
+  const selectedGallery = selectedProject?.gallery && selectedProject.gallery.length > 1 ? selectedProject.gallery : null
   const selectedLinks = selectedProject ? projectLinkEntries(selectedProject) : []
 
   const path =
@@ -256,7 +306,7 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col @2xl/fm:flex-row">
           <aside className="hidden w-44 shrink-0 border-r border-cyan-300/10 p-3 @xl/fm:block">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-cyan-300/40">
               Places
@@ -289,7 +339,7 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
             </ul>
           </aside>
 
-          <div className="min-w-0 flex-1 overflow-y-auto p-4 @container">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 @container">
             {visibleEntries.length === 0 ? (
               <p className="font-mono text-xs text-cyan-300/50">No entries found.</p>
             ) : (
@@ -332,10 +382,41 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
           </div>
 
           {selectedProject && (
-            <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-cyan-300/10 p-3 @2xl/fm:block">
-              <div className="h-36 overflow-hidden rounded-lg border border-cyan-300/20">
-                <ProjectThumb project={selectedProject} />
-              </div>
+            <aside className="max-h-[46%] w-full shrink-0 overflow-y-auto border-t border-cyan-300/10 p-3 @2xl/fm:max-h-full @2xl/fm:w-72 @2xl/fm:border-l @2xl/fm:border-t-0">
+              {selectedGallery ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedGallery.map((shot, index) => (
+                    <MediaThumb
+                      key={shot}
+                      src={shot}
+                      accent={selectedProject.accent}
+                      initial={selectedProject.name.charAt(0)}
+                      compact
+                      baseHeight="h-24"
+                      portraitHeight="h-52"
+                      className={
+                        selectedGallery.length % 2 === 1 && index === selectedGallery.length - 1
+                          ? 'col-span-2'
+                          : ''
+                      }
+                      label={selectedProject.galleryLabels?.[index]}
+                      alt={
+                        selectedProject.galleryLabels?.[index]
+                          ? `${selectedProject.name} — ${selectedProject.galleryLabels[index]}`
+                          : `${selectedProject.name} screenshot ${index + 1}`
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <MediaThumb
+                  src={selectedProject.image}
+                  accent={selectedProject.accent}
+                  initial={selectedProject.name.charAt(0)}
+                  alt={`${selectedProject.name} cover`}
+                  portraitHeight="h-96"
+                />
+              )}
               <h3 className="mt-3 font-mono text-sm text-cyan-100">{selectedProject.name}</h3>
               {selectedProject.tagline && (
                 <p className="mt-0.5 text-[11px] leading-snug" style={{ color: selectedProject.accent }}>

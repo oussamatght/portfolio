@@ -8,7 +8,7 @@ import {
 import { Terminal as TerminalIcon } from 'lucide-react'
 import WindowFrame from './WindowFrame'
 import { projects } from '../data/projects'
-import { profile } from '../data/profile'
+import { instructorExperience, profile } from '../data/profile'
 import * as vfs from '../lib/vfs'
 
 type TerminalAppProps = {
@@ -19,10 +19,27 @@ type TerminalAppProps = {
   hidden?: boolean
 }
 
+type Tone = 'green' | 'cyan' | 'sky' | 'violet' | 'amber' | 'dim' | 'plain'
+
+type Segment = { text: string; tone: Tone }
+
 type Line = {
   kind: 'input' | 'output' | 'error'
-  text: string
+  text: string | Segment[]
+  tone?: Tone
 }
+
+const TONE_CLASS: Record<Tone, string> = {
+  green: 'text-emerald-300',
+  cyan: 'text-cyan-300',
+  sky: 'text-sky-300',
+  violet: 'text-violet-300',
+  amber: 'text-amber-300',
+  dim: 'text-slate-500',
+  plain: 'text-slate-200',
+}
+
+const seg = (text: string, tone: Tone): Segment => ({ text, tone })
 
 const FISH_LOGO: Record<string, string[]> = {
   K: [' _  __', '| |/ /', "| ' / ", '| . \\ ', '|_|\\_\\'],
@@ -209,8 +226,9 @@ export default function TerminalApp({
     {
       kind: 'output',
       text: 'Kali Portfolio OS terminal — simulated session in your browser.',
+      tone: 'cyan',
     },
-    { kind: 'output', text: 'Type "help" for the command list or "neofetch" for system info.' },
+    { kind: 'output', text: 'Type "help" for the command list or "neofetch" for system info.', tone: 'dim' },
   ])
   const [input, setInput] = useState('')
   const [cwd, setCwd] = useState(vfs.HOME)
@@ -236,8 +254,7 @@ export default function TerminalApp({
   }, [lines])
 
   const push = (line: Line) => setLines((current) => [...current, line])
-  const pushAll = (texts: string[], kind: 'output' | 'error') =>
-    setLines((current) => [...current, ...texts.map((text) => ({ kind, text }))])
+  const pushLines = (newLines: Line[]) => setLines((current) => [...current, ...newLines])
 
   const promptText = `kali@kali:${vfs.displayPath(cwd)}$`
 
@@ -245,9 +262,7 @@ export default function TerminalApp({
     const path = target ? vfs.resolvePath(cwd, target) : cwd
     if (!path) return null
     const entries = vfs.listEntries(path)
-    return entries.map((entry) =>
-      entry.kind === 'dir' ? `${entry.name}/` : entry.name,
-    )
+    return entries.map((entry) => ({ name: entry.name, dir: entry.kind === 'dir' }))
   }
 
   const schedule = (delay: number, fn: () => void) => {
@@ -273,7 +288,23 @@ export default function TerminalApp({
           })
           break
         }
-        push({ kind: 'output', text: HELP_TEXT })
+        pushLines(
+          HELP_TEXT.split('\n').map((row) => {
+            if (!row.trim()) return { kind: 'output' as const, text: '' }
+            if (row.startsWith('Note:')) return { kind: 'output' as const, text: row, tone: 'amber' as const }
+            if (!row.startsWith(' ')) return { kind: 'output' as const, text: row, tone: 'cyan' as const }
+            const match = row.match(/^(\s+)(\S+)(.*)$/)
+            if (!match) return { kind: 'output' as const, text: row }
+            return {
+              kind: 'output' as const,
+              text: [
+                seg(match[1], 'plain'),
+                seg(match[2], 'green'),
+                seg(match[3], 'plain'),
+              ],
+            }
+          }),
+        )
         break
       }
 
@@ -297,10 +328,21 @@ export default function TerminalApp({
           })
           break
         }
-        push({
-          kind: 'output',
-          text: result.length ? result.join('\n') : '(empty directory)',
-        })
+        if (!result.length) {
+          push({ kind: 'output', text: '(empty directory)', tone: 'dim' })
+          break
+        }
+        pushLines(
+          result.map((entry) => ({
+            kind: 'output' as const,
+            text: [
+              seg(
+                entry.dir ? `${entry.name}/` : entry.name,
+                entry.dir ? 'cyan' : 'plain',
+              ),
+            ],
+          })),
+        )
         break
       }
 
@@ -396,7 +438,24 @@ export default function TerminalApp({
           push({ kind: 'error', text: `tree: ${argument}: Not a directory` })
           break
         }
-        pushAll(vfs.treeLines(path) ?? [], 'output')
+        const tree = vfs.treeLines(path) ?? []
+        pushLines(
+          tree.map((row, index) => {
+            const match = row.match(/^([│├└─\s]*)(.*)$/)
+            const glyph = match?.[1] ?? ''
+            const name = match?.[2] ?? row
+            const nameTone: Tone = name.endsWith('/') ? 'cyan' : 'plain'
+            if (index === 0 && !glyph.trim()) {
+              return { kind: 'output' as const, text: [seg(name, 'amber')] }
+            }
+            return {
+              kind: 'output' as const,
+              text: glyph
+                ? [seg(glyph, 'dim'), seg(name, nameTone)]
+                : [seg(name, nameTone)],
+            }
+          }),
+        )
         break
       }
 
@@ -425,30 +484,57 @@ export default function TerminalApp({
         const uptime = Math.max(0, Date.now() - bootedAt.current)
         const hours = Math.floor(uptime / 3600000)
         const minutes = Math.floor((uptime % 3600000) / 60000)
-        const info = [
-          `${profile.user}@${profile.hostname}`,
-          '--------------------',
-          'OS: Kali GNU/Linux Portfolio OS (simulated)',
-          'Kernel: 6.16.0-kali-web',
-          `Uptime: ${hours}h ${minutes}m (session)`,
-          'Shell: react-term 5.2',
-          `Resolution: ${window.innerWidth}x${window.innerHeight}`,
-          'DE: OussamaWM 1.0',
-          'Theme: Neon Dragon',
-          'Terminal: portfolio-term',
-          `CPU: Intel i7 (simulated) [${Math.max(2, navigator.hardwareConcurrency)} cores]`,
-          'Memory: 4.1 GiB / 15.4 GiB',
-          'Disk: 8.2G / 20G (44%)',
-          'Packages: 1337 (this portfolio only < 100)',
+        const fields: Array<[string, string]> = [
+          ['OS', 'Kali GNU/Linux Portfolio OS (simulated)'],
+          ['Kernel', '6.16.0-kali-web'],
+          ['Uptime', `${hours}h ${minutes}m (session)`],
+          ['Shell', 'react-term 5.2'],
+          ['Resolution', `${window.innerWidth}x${window.innerHeight}`],
+          ['DE', 'OussamaWM 1.0'],
+          ['Theme', 'Neon Dragon'],
+          ['Terminal', 'portfolio-term'],
+          ['CPU', `Intel i7 (simulated) [${Math.max(2, navigator.hardwareConcurrency)} cores]`],
+          ['Memory', '4.1 GiB / 15.4 GiB'],
+          ['Disk', '8.2G / 20G (44%)'],
+          ['Packages', '1337 (this portfolio only < 100)'],
         ]
         const width = Math.max(...LOGO_LINES.map((line) => line.length)) + 4
-        const rows = Math.max(LOGO_LINES.length, info.length)
-        const merged: string[] = []
+        const rows = Math.max(LOGO_LINES.length, fields.length + 2)
         for (let index = 0; index < rows; index += 1) {
-          const logo = (LOGO_LINES[index] ?? '').padEnd(width)
-          merged.push(`${logo}${info[index] ?? ''}`.trimEnd())
+          const logo = seg((LOGO_LINES[index] ?? '').padEnd(width), 'violet')
+          if (index === 0) {
+            push({
+              kind: 'output',
+              text: [
+                seg((LOGO_LINES[index] ?? '').padEnd(width), 'violet'),
+                seg(profile.user, 'green'),
+                seg('@', 'dim'),
+                seg(profile.hostname, 'cyan'),
+              ],
+            })
+            continue
+          }
+          if (index === 1) {
+            push({
+              kind: 'output',
+              text: [logo, seg('-'.repeat(20), 'dim')],
+            })
+            continue
+          }
+          const field = fields[index - 2]
+          if (field) {
+            push({
+              kind: 'output',
+              text: [
+                logo,
+                seg(`${field[0].padEnd(11)}: `, 'amber'),
+                seg(field[1], 'plain'),
+              ],
+            })
+          } else {
+            push({ kind: 'output', text: [logo] })
+          }
         }
-        push({ kind: 'output', text: merged.join('\n') })
         break
       }
 
@@ -499,62 +585,72 @@ export default function TerminalApp({
         break
 
       case 'free':
-        push({
-          kind: 'output',
-          text: [
-            '               total        used        free      shared  buff/cache   available',
-            'Mem:        15790MiB    4210MiB   10480MiB        0MiB    1100MiB   11200MiB',
-            'Swap:        2048MiB       0MiB    2048MiB',
-          ].join('\n'),
-        })
+        pushLines([
+          {
+            kind: 'output',
+            text: '               total        used        free      shared  buff/cache   available',
+            tone: 'amber',
+          },
+          {
+            kind: 'output',
+            text: [
+              seg('Mem:', 'cyan'),
+              seg('        15790MiB    4210MiB   10480MiB        0MiB    1100MiB   11200MiB', 'plain'),
+            ],
+          },
+          {
+            kind: 'output',
+            text: [seg('Swap:', 'violet'), seg('        2048MiB       0MiB    2048MiB', 'plain')],
+          },
+        ])
         break
 
       case 'df':
-        push({
-          kind: 'output',
-          text: [
-            'Filesystem      Size  Used Avail Use% Mounted on',
-            '/dev/sda1        20G  8.2G   11G  45% /',
-            'tmpfs           7.7G     0  7.7G   0% /dev/shm',
-            '/dev/sdb1       256G  112G  144G  44% /media/portfolio',
-          ].join('\n'),
-        })
+        pushLines([
+          { kind: 'output', text: 'Filesystem      Size  Used Avail Use% Mounted on', tone: 'amber' },
+          { kind: 'output', text: '/dev/sda1        20G  8.2G   11G  45% /' },
+          { kind: 'output', text: 'tmpfs           7.7G     0  7.7G   0% /dev/shm', tone: 'dim' },
+          { kind: 'output', text: '/dev/sdb1       256G  112G  144G  44% /media/portfolio' },
+        ])
         break
 
-      case 'ps':
-        push({
-          kind: 'output',
-          text: [
-            '  PID TTY          TIME CMD',
-            '    1 ?        00:00:14 systemd (simulated)',
-            '  183 ?        00:01:02 OussamaWM',
-            '  246 ?        00:00:38 desktop-shell',
-            '  512 ?        00:00:11 portfolio-files',
-            ' 1337 pts/0    00:00:00 portfolio-term (this session)',
-          ].join('\n'),
-        })
+      case 'ps': {
+        const rows = [
+          '  1 ?        00:00:14 systemd (simulated)',
+          '  183 ?        00:01:02 OussamaWM',
+          '  246 ?        00:00:38 desktop-shell',
+          '  512 ?        00:00:11 portfolio-files',
+          ' 1337 pts/0    00:00:00 portfolio-term (this session)',
+        ]
+        pushLines([
+          { kind: 'output', text: '  PID TTY          TIME CMD', tone: 'cyan' },
+          ...rows.map((row) => ({ kind: 'output' as const, text: row })),
+        ])
         break
+      }
 
-      case 'top':
-        push({
-          kind: 'output',
-          text: [
-            `top - ${new Date().toLocaleTimeString([], { hour12: false })} up  ${Math.max(
+      case 'top': {
+        pushLines([
+          {
+            kind: 'output',
+            text: `top - ${new Date().toLocaleTimeString([], { hour12: false })} up  ${Math.max(
               1,
               Math.floor((Date.now() - bootedAt.current) / 60000),
             )} min,  1 user,  load average: 0.52, 0.38, 0.31`,
-            'Tasks:  77 total,   1 running,  76 sleeping',
-            '%Cpu(s): 12.0 us,  3.1 sy,  0.0 ni, 84.9 id',
-            'MiB Mem :  15790 total,  10480 free,   4210 used,   1100 buff/cache',
-            '',
-            '  PID USER      %CPU %MEM COMMAND',
-            '  183 kali       3.4 12.1 OussamaWM',
-            '  512 kali       2.1  4.5 portfolio-files',
-            ' 246  kali       1.2  3.3 desktop-shell',
-            ' 1337 kali       0.4  1.1 portfolio-term',
-          ].join('\n'),
-        })
+            tone: 'amber',
+          },
+          { kind: 'output', text: 'Tasks:  77 total,   1 running,  76 sleeping' },
+          { kind: 'output', text: '%Cpu(s): 12.0 us,  3.1 sy,  0.0 ni, 84.9 id', tone: 'dim' },
+          { kind: 'output', text: 'MiB Mem :  15790 total,  10480 free,   4210 used,   1100 buff/cache' },
+          { kind: 'output', text: '' },
+          { kind: 'output', text: '  PID USER      %CPU %MEM COMMAND', tone: 'cyan' },
+          { kind: 'output', text: '  183 kali       3.4 12.1 OussamaWM' },
+          { kind: 'output', text: '  512 kali       2.1  4.5 portfolio-files' },
+          { kind: 'output', text: ' 246  kali       1.2  3.3 desktop-shell' },
+          { kind: 'output', text: ' 1337 kali       0.4  1.1 portfolio-term' },
+        ])
         break
+      }
 
       case 'ip': {
         const sub = args[0]?.toLowerCase()
@@ -565,15 +661,30 @@ export default function TerminalApp({
           })
           break
         }
-        push({
-          kind: 'output',
-          text: [
-            '1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536',
-            '    inet 127.0.0.1/8 scope host lo',
-            '2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500',
-            '    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic eth0',
-          ].join('\n'),
-        })
+        pushLines([
+          {
+            kind: 'output',
+            text: [
+              seg('1: ', 'dim'),
+              seg('lo', 'sky'),
+              seg(': ', 'dim'),
+              seg('<LOOPBACK,UP,LOWER_UP>', 'amber'),
+              seg(' mtu 65536', 'plain'),
+            ],
+          },
+          { kind: 'output', text: '    inet 127.0.0.1/8 scope host lo' },
+          {
+            kind: 'output',
+            text: [
+              seg('2: ', 'dim'),
+              seg('eth0', 'sky'),
+              seg(': ', 'dim'),
+              seg('<BROADCAST,MULTICAST,UP,LOWER_UP>', 'amber'),
+              seg(' mtu 1500', 'plain'),
+            ],
+          },
+          { kind: 'output', text: '    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic eth0' },
+        ])
         break
       }
 
@@ -604,7 +715,12 @@ export default function TerminalApp({
         const ip = ipFor(target.toLowerCase())
         push({
           kind: 'output',
-          text: `PING ${target} (${ip}) — simulated ping, no real packets are sent`,
+          text: [
+            seg('PING', 'cyan'),
+            seg(` ${target} `, 'plain'),
+            seg(`(${ip})`, 'green'),
+            seg(' — simulated ping, no real packets are sent', 'dim'),
+          ],
         })
         const latencyBase = 18 + (ip.split('.').reduce((sum, part) => sum + Number(part), 0) % 23)
         for (let index = 0; index < count; index += 1) {
@@ -614,13 +730,17 @@ export default function TerminalApp({
             push({
               kind: 'output',
               text: `64 bytes from ${ip}: icmp_seq=${seq} ttl=56 time=${latency} ms`,
+              tone: 'green',
             }),
           )
         }
         schedule(420 * count + 260, () => {
           push({
             kind: 'output',
-            text: `--- ${target} ping statistics (simulated) ---\n${count} packets transmitted, ${count} received, 0% packet loss`,
+            text: [
+              seg(`--- ${target} ping statistics (simulated) ---`, 'dim'),
+              seg(`\n${count} packets transmitted, ${count} received, 0% packet loss`, 'cyan'),
+            ],
           })
         })
         break
@@ -642,104 +762,172 @@ export default function TerminalApp({
           })
           break
         }
-        push({ kind: 'output', text: page })
+        pushLines(
+          page.split('\n').map((row, index) => {
+            if (index === 0) {
+              const separator = row.indexOf(' — ')
+              if (separator > 0) {
+                return {
+                  kind: 'output' as const,
+                  text: [seg(row.slice(0, separator), 'amber'), seg(row.slice(separator), 'plain')],
+                }
+              }
+            }
+            if (row.startsWith('Usage:')) {
+              return { kind: 'output' as const, text: row, tone: 'dim' as const }
+            }
+            return { kind: 'output' as const, text: row }
+          }),
+        )
         break
       }
 
       case 'about':
-        push({
-          kind: 'output',
-          text: [
-            `${profile.name} — ${profile.role}`,
-            '',
-            'Full-stack web & mobile developer. I build real products end to',
-            'end: React/Next.js frontends, Node/Express APIs, MongoDB data and',
-            'React Native apps shipped to Google Play & the App Store.',
-            '',
-            'This desktop, simulated filesystem and terminal are hand-built',
-            'with React + TypeScript + Tailwind CSS.',
-            '',
-            'Run: projects, skills, contact, social, resume — or open <id>.',
-          ].join('\n'),
-        })
+        pushLines([
+          {
+            kind: 'output',
+            text: [seg(profile.name, 'green'), seg(' — ', 'dim'), seg(profile.role, 'cyan')],
+          },
+          { kind: 'output', text: '' },
+          {
+            kind: 'output',
+            text: [seg('Education: ', 'amber'), seg('Computer Science Student @ USTHB', 'plain')],
+          },
+          { kind: 'output', text: 'Full-stack web & mobile developer. I build real products end to' },
+          { kind: 'output', text: 'end: React/Next.js frontends, Node/Express APIs, MongoDB data and' },
+          { kind: 'output', text: 'React Native apps shipped to Google Play & the App Store.' },
+          { kind: 'output', text: 'Focus: clean architecture, scalable systems, AI-powered products.' },
+          { kind: 'output', text: '' },
+          { kind: 'output', text: 'This desktop, simulated filesystem and terminal are hand-built' },
+          { kind: 'output', text: 'with React + TypeScript + Tailwind CSS.', tone: 'dim' },
+          { kind: 'output', text: '' },
+          { kind: 'output', text: 'Instructor experience:', tone: 'amber' },
+          ...instructorExperience.flatMap((role) => [
+            {
+              kind: 'output' as const,
+              text: [
+                seg(`  ${role.org}`, 'cyan'),
+                seg(' — ', 'dim'),
+                seg(`${role.title} `, 'plain'),
+                seg(`(${role.period})`, 'dim'),
+              ],
+            },
+            ...role.points.map((point) => ({
+              kind: 'output' as const,
+              text: [seg('    · ', 'violet'), seg(point, 'plain')],
+            })),
+          ]),
+          { kind: 'output', text: '' },
+          {
+            kind: 'output',
+            text: [seg('Run: ', 'dim'), seg('projects skills contact social resume open <id>', 'green')],
+          },
+        ])
         break
 
       case 'projects': {
-        const rows = projects.map(
-          (project) =>
-            `${project.id.padEnd(Math.max(18, ...projects.map((item) => item.id.length)))} ${project.year}  ${project.tagline ?? project.description}`,
-        )
-        push({
-          kind: 'output',
-          text: `${rows.join('\n')}\n\n${projects.length} projects — run "open <id>" to browse folder contents.`,
-        })
+        const idWidth = Math.max(18, ...projects.map((item) => item.id.length))
+        pushLines([
+          ...projects.map((project) => ({
+            kind: 'output' as const,
+            text: [
+              seg(project.id.padEnd(idWidth), 'violet'),
+              seg(' ', 'dim'),
+              seg(project.year, 'amber'),
+              seg('  ', 'dim'),
+              seg(project.tagline ?? project.description, 'plain'),
+            ],
+          })),
+          { kind: 'output', text: '' },
+          {
+            kind: 'output',
+            text: [
+              seg(`${projects.length} projects`, 'cyan'),
+              seg(' — run "open <id>" to browse folder contents.', 'dim'),
+            ],
+          },
+        ])
         break
       }
 
       case 'skills': {
-        const rows = SKILLS.buckets.map((bucket) => {
-          const names =
-            bucket.items.length > 0
-              ? bucket.items.map((item) => `${item.name} (${item.count})`).join('  •  ')
-              : '—'
-          return `${bucket.label.padEnd(16)} ${names}`
-        })
-        if (SKILLS.others.length) {
-          rows.push(
-            `${'Other'.padEnd(16)} ${SKILLS.others
-              .map((item) => `${item.name} (${item.count})`)
-              .join('  •  ')}`,
+        const renderNames = (items: Array<{ name: string; count: number }>): Segment[] =>
+          items.flatMap((item, index) =>
+            index === 0
+              ? [seg(`${item.name} (${item.count})`, 'plain')]
+              : [seg('  •  ', 'dim'), seg(`${item.name} (${item.count})`, 'plain')],
           )
-        }
-        push({
-          kind: 'output',
-          text: `Skills derived from the ${SKILLS.total} unique technologies across the portfolio:\n\n${rows.join('\n')}`,
-        })
+        pushLines([
+          {
+            kind: 'output',
+            text: [
+              seg('Skills derived from the ', 'plain'),
+              seg(String(SKILLS.total), 'green'),
+              seg(' unique technologies across the portfolio:', 'plain'),
+            ],
+          },
+          { kind: 'output', text: '' },
+          ...SKILLS.buckets.map((bucket) => ({
+            kind: 'output' as const,
+            text: [
+              seg(bucket.label.padEnd(16), 'amber'),
+              ...(bucket.items.length
+                ? renderNames(bucket.items)
+                : [seg('—', 'dim')]),
+            ],
+          })),
+          ...(SKILLS.others.length
+            ? [
+                {
+                  kind: 'output' as const,
+                  text: [seg('Other'.padEnd(16), 'amber'), ...renderNames(SKILLS.others)],
+                },
+              ]
+            : []),
+        ])
         break
       }
 
       case 'contact':
-        push({
-          kind: 'output',
-          text: [
-            `GitHub     ${profile.github}`,
-            `LinkedIn   ${profile.linkedin}`,
-            `Email      ${profile.emailLabel}`,
-            '',
-            'Everything here is real and reachable — no simulated links.',
-          ].join('\n'),
-        })
+        pushLines([
+          { kind: 'output', text: [seg('GitHub'.padEnd(11), 'green'), seg(profile.github, 'cyan')] },
+          { kind: 'output', text: [seg('LinkedIn'.padEnd(11), 'green'), seg(profile.linkedin, 'cyan')] },
+          { kind: 'output', text: [seg('Email'.padEnd(11), 'green'), seg(profile.emailLabel, 'amber')] },
+          { kind: 'output', text: '' },
+          { kind: 'output', text: 'Everything here is real and reachable — no simulated links.', tone: 'dim' },
+        ])
         break
 
       case 'social':
-        push({
-          kind: 'output',
-          text: [
-            `GitHub:    ${profile.github}`,
-            `LinkedIn:  ${profile.linkedin}`,
-            '',
-            'Email:    "contact" has the full details.',
-          ].join('\n'),
-        })
+        pushLines([
+          { kind: 'output', text: [seg('GitHub:'.padEnd(11), 'green'), seg(profile.github, 'cyan')] },
+          { kind: 'output', text: [seg('LinkedIn:'.padEnd(11), 'green'), seg(profile.linkedin, 'cyan')] },
+          { kind: 'output', text: '' },
+          { kind: 'output', text: 'Email:    "contact" has the full details.', tone: 'dim' },
+        ])
         break
 
       case 'resume':
-        push({
-          kind: 'output',
-          text: [
-            'CV / RESUME (PDF)',
-            '-----------------',
-            `File:        ${profile.resumePath}`,
-            `Downloads as: ${profile.resumeFileName}`,
-            '',
-            'Ways to get it:',
-            `  1. "Download CV (PDF)" button in the About window`,
-            `  2. Same button in the app menu (top bar, left avatar)`,
-            `  3. Direct link: ${profile.resumePath}`,
-            '',
-            `Details also live at ~/Documents/resume.txt ("cat ~/Documents/resume.txt").`,
-          ].join('\n'),
-        })
+        pushLines([
+          { kind: 'output', text: 'CV / RESUME (PDF)', tone: 'amber' },
+          { kind: 'output', text: '-----------------', tone: 'amber' },
+          { kind: 'output', text: `File:        ${profile.resumePath}` },
+          { kind: 'output', text: `Downloads as: ${profile.resumeFileName}` },
+          { kind: 'output', text: '' },
+          { kind: 'output', text: 'Ways to get it:', tone: 'amber' },
+          { kind: 'output', text: `  1. "Download CV (PDF)" button in the About window` },
+          { kind: 'output', text: `  2. Same button in the app menu (top bar, left avatar)` },
+          {
+            kind: 'output',
+            text: [seg('  3. Direct link: ', 'dim'), seg(profile.resumePath, 'cyan')],
+          },
+          { kind: 'output', text: '' },
+          {
+            kind: 'output',
+            text: `Details also live at ~/Documents/resume.txt ("cat ~/Documents/resume.txt").`,
+            tone: 'dim',
+          },
+        ])
         break
 
       case 'open': {
@@ -756,7 +944,7 @@ export default function TerminalApp({
           break
         }
         onOpenProject?.(project.id)
-        push({ kind: 'output', text: `Opening ${project.name} in the File Manager...` })
+        push({ kind: 'output', text: `Opening ${project.name} in the File Manager...`, tone: 'green' })
         break
       }
 
@@ -846,18 +1034,32 @@ export default function TerminalApp({
           <pre
             key={index}
             className={`whitespace-pre-wrap break-words ${
-              line.kind === 'input'
-                ? 'text-cyan-300'
-                : line.kind === 'error'
-                  ? 'text-rose-400'
-                  : 'text-emerald-300/90'
+              Array.isArray(line.text)
+                ? ''
+                : line.kind === 'input'
+                  ? 'text-cyan-300'
+                  : line.kind === 'error'
+                    ? 'text-rose-400'
+                    : TONE_CLASS[line.tone ?? 'plain']
             }`}
           >
-            {line.text}
+            {Array.isArray(line.text)
+              ? line.text.map((segment, segmentIndex) => (
+                  <span
+                    key={segmentIndex}
+                    className={TONE_CLASS[segment.tone]}
+                  >
+                    {segment.text}
+                  </span>
+                ))
+              : line.text}
           </pre>
         ))}
 
-        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-cyan-300">
+        <form
+          onSubmit={handleSubmit}
+          className="sticky bottom-0 z-10 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 bg-[#04070c]/95 py-2 text-cyan-300 backdrop-blur-sm"
+        >
           <span className="min-w-0 break-all">{promptText}</span>
           <input
             ref={inputRef}
@@ -867,7 +1069,7 @@ export default function TerminalApp({
             spellCheck={false}
             autoComplete="off"
             aria-label="Terminal command input"
-            className="min-w-[12ch] max-w-full flex-1 bg-transparent text-emerald-300 outline-none"
+            className="min-w-[12ch] max-w-full flex-1 bg-transparent text-slate-100 outline-none"
           />
         </form>
       </div>

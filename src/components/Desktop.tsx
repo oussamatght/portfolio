@@ -24,7 +24,7 @@ import FileManager from "./FileManager";
 import TerminalApp from "./TerminalApp";
 import WindowFrame from "./WindowFrame";
 import { projects } from "../data/projects";
-import { profile } from "../data/profile";
+import { aboutInfo, instructorExperience, profile } from "../data/profile";
 import { useCoarsePointer } from "../hooks/useCoarsePointer";
 import dragonWallpaper from "../assets/Neon Dragon Developer Brandscape.png";
 import profilePhoto from "../assets/BEST OUSSAMA PHOTO.png";
@@ -102,6 +102,153 @@ function SystemMetric({
           style={{ width }}
         />
       </div>
+    </div>
+  );
+}
+
+/** Email entry: copies the address (mailto often silently no-ops with no mail client). */
+function CopyEmailLink() {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(profile.emailLabel);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.location.href = profile.emailHref;
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Click to copy email address"
+      aria-label={`Copy email address ${profile.emailLabel}`}
+      className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+    >
+      <Mail size={13} />
+      <span>{copied ? "Copied to clipboard!" : profile.emailLabel}</span>
+    </button>
+  );
+}
+
+/** Live GitHub contribution heatmap, rendered from real commit data. */
+type ContributionDay = { date: string; count: number; level: number };
+
+const CONTRIBUTION_LADDER = [
+  "rgba(34, 211, 238, 0.07)",
+  "rgba(34, 211, 238, 0.3)",
+  "rgba(34, 211, 238, 0.55)",
+  "rgba(34, 211, 238, 0.8)",
+  "rgba(125, 230, 255, 1)",
+];
+
+function ContributionUniverse() {
+  const [days, setDays] = useState<ContributionDay[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`https://github-contributions-api.jogruber.de/v4/${profile.githubUser}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("bad status"))))
+      .then(
+        (data: { contributions: ContributionDay[] }) => {
+          const list = data.contributions ?? [];
+          if (!list.length) throw new Error("no data");
+          if (alive) setDays(list);
+        }
+      )
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (failed || !days) {
+    if (failed) {
+      return (
+        <p className="font-mono text-[11px] leading-relaxed text-slate-400">
+          Contribution grid unavailable right now —{" "}
+          <a
+            href={profile.github}
+            target="_blank"
+            rel="noreferrer"
+            className="text-cyan-300 transition hover:text-white"
+          >
+            view my activity on GitHub ↗
+          </a>
+        </p>
+      );
+    }
+    return (
+      <div
+        className="h-24 animate-pulse rounded-lg bg-slate-700/20"
+        role="status"
+        aria-label="Loading contribution grid"
+      />
+    );
+  }
+
+  // Trailing 365 days, oldest → newest, aligned to start on a Sunday.
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
+  cutoff.setHours(0, 0, 0, 0);
+  const year = days
+    .filter((d) => new Date(`${d.date}T00:00:00`) >= cutoff)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const first = new Date(`${year[0].date}T00:00:00`);
+  first.setDate(first.getDate() - first.getDay());
+  const total = year.reduce((sum, d) => sum + d.count, 0);
+  const lastTime = new Date(`${year[year.length - 1].date}T00:00:00`).getTime();
+  const weeks = Math.ceil((lastTime - first.getTime()) / 86400000 / 7) + 1;
+  const cols: (ContributionDay | null)[][] = Array.from({ length: weeks }, () =>
+    Array.from({ length: 7 }, () => null)
+  );
+  for (const day of year) {
+    const col = Math.floor(
+      (new Date(`${day.date}T00:00:00`).getTime() - first.getTime()) / 86400000 / 7
+    );
+    const row = new Date(`${day.date}T00:00:00`).getDay();
+    if (row < 7 && cols[col]) cols[col][row] = day;
+  }
+
+  const CELL = 12;
+  const GAP = 3;
+  const width = weeks * (CELL + GAP);
+  const height = 7 * (CELL + GAP) - GAP;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-cyan-300/15 bg-[#0a0f1c]/70 p-3 transition hover:border-cyan-300/30">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`GitHub contribution heatmap: ${total} commits in the last year`}
+        className="h-auto w-full"
+        style={{ filter: "drop-shadow(0 0 6px rgba(34,211,238,0.25))" }}
+      >
+        {cols.map((column, ci) =>
+          column.map((day, ri) => {
+            if (!day) return null;
+            return (
+              <rect
+                key={day.date}
+                x={ci * (CELL + GAP)}
+                y={ri * (CELL + GAP)}
+                width={CELL}
+                height={CELL}
+                rx={3}
+                fill={CONTRIBUTION_LADDER[Math.min(day.level, 4)]}
+              >
+                <title>{`${day.date}: ${day.count} commits`}</title>
+              </rect>
+            );
+          })
+        )}
+      </svg>
     </div>
   );
 }
@@ -608,7 +755,7 @@ export default function Desktop() {
                   initialPosition={{ x: 260, y: 130 }}
                   initialSize={{ width: 460, height: 390 }}
                 >
-                  <div className="h-full overflow-y-auto p-6 text-sm text-cyan-50/85">
+                  <div className="h-full overflow-y-auto p-4 text-sm text-cyan-50/85 sm:p-6">
                     <div className="mb-5 flex items-center gap-3">
                       <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-cyan-300/30 bg-cyan-300/10 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
                         <img
@@ -624,7 +771,10 @@ export default function Desktop() {
                           OUSSAMA
                         </h2>
                         <p className="mt-1 font-mono text-[10px] tracking-[.2em] text-cyan-300/60">
-                          FULL STACK DEVELOPER
+                          {profile.role}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          {aboutInfo.education}
                         </p>
                       </div>
                     </div>
@@ -632,6 +782,9 @@ export default function Desktop() {
                       Welcome to my Linux-inspired portfolio workspace. Explore
                       the projects, open the terminal, or browse the file
                       manager to discover my work and development setup.
+                    </p>
+                    <p className="mt-3 leading-relaxed text-slate-300">
+                      {aboutInfo.tagline}
                     </p>
                     <a
                       href={profile.resumePath}
@@ -664,10 +817,81 @@ export default function Desktop() {
                       </div>
                     </div>
                     <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[.24em] text-slate-400">
+                      Tech stack
+                    </h3>
+                    <div className="mt-3 space-y-3">
+                      {aboutInfo.techStack.map((group) => (
+                        <div key={group.label}>
+                          <p className="font-mono text-[11px] text-cyan-300/80">
+                            {group.label}
+                          </p>
+                          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                            {group.items.map((item) => (
+                              <li
+                                key={item}
+                                className="rounded-full border border-cyan-300/15 bg-cyan-300/[.05] px-2 py-0.5 font-mono text-[10px] text-cyan-100/80"
+                              >
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                    <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[.24em] text-slate-400">
+                      Instructor &amp; teaching
+                    </h3>
+                    <ul className="mt-3 space-y-2.5">
+                      {instructorExperience.map((role) => (
+                        <li
+                          key={role.org}
+                          className="rounded-lg border border-cyan-300/15 bg-cyan-300/[.04] p-3"
+                        >
+                          <p className="font-mono text-xs text-cyan-100">{role.title}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-400">
+                            {role.org} · {role.period}
+                          </p>
+                          <ul className="mt-2 space-y-1">
+                            {role.points.map((point) => (
+                              <li
+                                key={point}
+                                className="flex gap-1.5 text-[11px] leading-snug text-cyan-100/70"
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className="mt-px shrink-0 text-cyan-300/80"
+                                >
+                                  ▸
+                                </span>
+                                {point}
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ul>
+                    <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[.24em] text-slate-400">
+                      Contribution universe
+                    </h3>
+                    <div className="mt-3">
+                      <ContributionUniverse />
+                      <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+                        Live commit activity from my public GitHub — the grid
+                        updates as I ship.
+                      </p>
+                    </div>
+                    <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[.24em] text-slate-400">
                       Find me online
                     </h3>
                     <ul className="mt-3 space-y-2">
                       {PROFILE_LINKS.map((link) => {
+                        if (link.label === "Email") {
+                          return (
+                            <li key={link.label}>
+                              <CopyEmailLink />
+                            </li>
+                          );
+                        }
                         const Icon = link.icon;
                         return (
                           <li key={link.label}>
@@ -677,24 +901,15 @@ export default function Desktop() {
                                 "download" in link ? link.download : undefined
                               }
                               target={
-                                link.label === "Email" ||
-                                link.label === "Resume"
-                                  ? undefined
-                                  : "_blank"
+                                link.label === "Resume" ? undefined : "_blank"
                               }
                               rel={
-                                link.label === "Email" ||
-                                link.label === "Resume"
-                                  ? undefined
-                                  : "noreferrer"
+                                link.label === "Resume" ? undefined : "noreferrer"
                               }
                               className="inline-flex items-center gap-2 font-mono text-xs text-cyan-300 transition hover:text-white"
                             >
                               <Icon size={13} /> {link.label}{" "}
-                              {link.label === "Email" ||
-                              link.label === "Resume" ? null : (
-                                <span aria-hidden="true">↗</span>
-                              )}
+                              <span aria-hidden="true">↗</span>
                             </a>
                           </li>
                         );

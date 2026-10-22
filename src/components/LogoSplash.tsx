@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dragonWallpaper from "../assets/Neon Dragon Linux Tech Wallpaper.png";
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
+import { profile } from "../data/profile";
 import "../LogoSplash.css";
 
 type LogoSplashProps = {
@@ -329,7 +330,7 @@ export default function LogoSplash({
           <p className="lsplash-name">
             OUSSAMA<span>.</span>
           </p>
-          <p className="lsplash-role">FULL STACK DEVELOPER</p>
+          <p className="lsplash-role">{profile.role}</p>
           <div className="lsplash-divider">
             <span />
             <code>BUILD · SHIP · REPEAT</code>

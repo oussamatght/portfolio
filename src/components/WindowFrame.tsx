@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Minus, Square, X } from 'lucide-react'
+import { useCoarsePointer } from '../hooks/useCoarsePointer'
 
 type WindowFrameProps = {
   title: string
@@ -76,9 +77,13 @@ export default function WindowFrame({
   hidden = false,
 }: WindowFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const coarsePointer = useCoarsePointer()
   const [position, setPosition] = useState(initialPosition)
   const [size, setSize] = useState(initialSize)
-  const [maximized, setMaximized] = useState(false)
+  // Touch-first or phone-sized screens get app-like fullscreen windows.
+  const [maximized, setMaximized] = useState(
+    () => coarsePointer || window.innerWidth < 640,
+  )
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
   // Latest pre-maximize geometry, restored when un-maximizing.
   const restoreRef = useRef<Geometry | null>(null)
