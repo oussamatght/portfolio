@@ -76,6 +76,22 @@ const MAN_PAGES: Record<string, string> = {
   projects: 'projects — portfolio overview\n\nUsage: projects\n\nLists every portfolio project. Combine with "open <id>".',
   open: 'open — open a project window\n\nUsage: open <project-id>\n\nOpens the File Manager on the given project folder.',
   man: 'man — show a manual page\n\nUsage: man <command>\n\nShort manual pages for the supported commands.',
+  whoami: 'whoami — current user\n\nUsage: whoami\n\nPrints the simulated session user name.',
+  hostname: 'hostname — current host\n\nUsage: hostname\n\nPrints the simulated host name of this session.',
+  date: 'date — print date and time\n\nUsage: date\n\nShows the real current date and time of your browser session.',
+  echo: 'echo — print text\n\nUsage: echo <text>\n\nRepeats the given text. Expands $USER, $HOME and $PWD.',
+  id: 'id — user identity\n\nUsage: id\n\nShows the simulated uid/gid and group memberships.',
+  uptime: 'uptime — session uptime\n\nUsage: uptime\n\nShows how long this simulated session has been running.',
+  free: 'free — memory usage\n\nUsage: free\n\nPrints simulated memory and swap figures.',
+  df: 'df — disk usage\n\nUsage: df\n\nPrints simulated filesystem space usage.',
+  ps: 'ps — running processes\n\nUsage: ps\n\nLists a few simulated processes; nothing real runs here.',
+  top: 'top — simulated system monitor\n\nUsage: top\n\nPrints a one-shot simulated summary; it does not refresh.',
+  ip: 'ip — network interfaces\n\nUsage: ip addr\n\nShows simulated interface details. Try: ip addr',
+  about: 'about — who am I\n\nUsage: about\n\nShort introduction to Oussama and what he builds.',
+  skills: 'skills — command coverage\n\nUsage: skills\n\nLists every simulated command grouped by category.',
+  contact: 'contact — get in touch\n\nUsage: contact\n\nEmail, GitHub and LinkedIn links.',
+  social: 'social — links\n\nUsage: social\n\nPrints GitHub and LinkedIn profile links.',
+  exit: 'exit — leave the shell\n\nUsage: exit\n\nCloses or resets this simulated terminal session.',
 }
 
 const SKILL_BUCKETS: Array<{ label: string; keywords: string[] }> = [

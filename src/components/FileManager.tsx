@@ -417,6 +417,12 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
     entry.name.toLowerCase().includes(query.trim().toLowerCase()),
   )
 
+  const selectedNode = selected ? nodes.get(selected) : undefined
+  const movableSelected =
+    selectedNode && !selectedNode.target && !selectedNode.projectId
+      ? selectedNode
+      : null
+
   const openEntry = (entry: Entry) => {
     if (entry.kind !== 'folder') return
     if (entry.target) {
@@ -509,6 +515,11 @@ export default function FileManager({ onClose, onMinimize, zIndex = 10, hidden =
               className="w-28 bg-transparent font-mono text-xs text-cyan-100 outline-none placeholder:text-cyan-300/40"
             />
           </div>
+          {movableSelected && (
+            <p className="w-full pl-1 font-mono text-[10px] text-cyan-300/50">
+              Move "{movableSelected.name}" by dragging it onto a folder ( or ../ ).
+            </p>
+          )}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col @2xl/fm:flex-row">

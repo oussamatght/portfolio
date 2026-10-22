@@ -1,5 +1,4 @@
-import { useCoarsePointer } from '../hooks/useCoarsePointer'
-import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 type DesktopIconProps = {
   label: string
@@ -16,13 +15,9 @@ export default function DesktopIcon({
   onSelect,
   onOpen,
 }: DesktopIconProps) {
-  const isCoarsePointer = useCoarsePointer()
-
-  const handleClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+  const handleClick = () => {
     onSelect?.()
-    if (isCoarsePointer || event.detail === 0) {
-      onOpen?.()
-    }
+    onOpen?.()
   }
 
   return (
