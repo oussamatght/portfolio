@@ -178,6 +178,3 @@ No license has been specified yet. Add a `LICENSE` file and update this section 
 
 ---
 
-<p align="center">
-  Designed with a Linux-inspired mindset and built with React ⚡
-</p>
